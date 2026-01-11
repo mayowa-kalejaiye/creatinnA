@@ -1,0 +1,10 @@
+# LMS Dependencies
+drizzle
+next-auth
+@auth/prisma-adapter
+bcryptjs
+@types/bcryptjs
+react-player
+zustand
+date-fns
+react-hot-toast
