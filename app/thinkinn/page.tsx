@@ -45,7 +45,7 @@ export default function ThinkinnPage() {
                   What It Is
                 </h2>
                 <p className="text-white/70 mb-6">
-                  The Thinkinn is CreatINN Academy's weekly intellectual content series focused on the intersection of creativity, business, and technology.
+                  The Thinkinn is CreatINN Academy&apos;s weekly intellectual content series focused on the intersection of creativity, business, and technology.
                 </p>
                 <ul className="space-y-3 text-white/70">
                   <li className="flex items-start">
@@ -69,10 +69,10 @@ export default function ThinkinnPage() {
 
               <div className="glass rounded-3xl p-10 border-2 border-white/20">
                 <h2 className="text-3xl font-display font-bold mb-6">
-                  What It's Not
+                  What It&apos;s Not
                 </h2>
                 <p className="text-white/60 mb-6">
-                  We don't do quick tips, viral hacks, or tutorial content. This is strategic thinking for serious creatives.
+                  We don&apos;t do quick tips, viral hacks, or tutorial content. This is strategic thinking for serious creatives.
                 </p>
                 <ul className="space-y-3 text-white/50">
                   <li className="flex items-start">
@@ -206,7 +206,7 @@ export default function ThinkinnPage() {
                 <br /><br />
                 The Thinkinn is where we explore the thinking that separates struggling creatives from thriving entrepreneurs.
                 <br /><br />
-                It's authority-building. It's filtering serious applicants. It's thought leadership.
+                It&apos;s authority-building. It&apos;s filtering serious applicants. It&apos;s thought leadership.
               </p>
             </motion.div>
           </div>

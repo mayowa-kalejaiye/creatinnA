@@ -32,18 +32,18 @@ export const authConfig: AuthOptions = {
         }
         const passwordMatch = await bcrypt.compare(
           credentials.password as string,
-          user.password
+          (user as any).password
         );
         if (!passwordMatch) {
           console.log("Password does not match");
           return null;
         }
-        console.log("Login successful for user:", user.email);
+        console.log("Login successful for user:", (user as any).email);
         return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
+          id: (user as any).id,
+          email: (user as any).email,
+          name: (user as any).name,
+          role: (user as any).role,
         };
       }
     })
@@ -66,10 +66,12 @@ export const authConfig: AuthOptions = {
   }
 }
 
-export const { handlers, auth: nextAuth } = NextAuth(authConfig)
+const handler = NextAuth(authConfig);
+export const handlers = handler;
+export const nextAuth = handler;
 
 export async function auth() {
-  return getServerSession(authConfig)
+  return getServerSession(authConfig as any)
 }
 
 export async function getSessionUserByEmail(email: string) {
@@ -81,14 +83,7 @@ export async function getSessionUserById(id: string) {
 }
 
 // Add your NextAuth options here:
-export const authOptions = {
-  // ...your NextAuth config...
-  // Example:
-  // providers: [...],
-  // adapter: ...,
-  // session: ...,
-  // callbacks: ...,
-}
+export const authOptions = authConfig;
 
 // Optionally, export a helper for getServerSession if you want:
 export { getServerSession } from "next-auth"

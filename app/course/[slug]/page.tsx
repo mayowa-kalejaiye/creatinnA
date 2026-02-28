@@ -1,18 +1,19 @@
-import { auth } from '@/lib/auth';
+import { authOptions } from '@/lib/auth';
 import { sqlite } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import CoursePlayerClient from './CoursePlayerClient';
 import { getCourseBySlug } from '@/lib/db-adapter';
+import { getServerSession } from 'next-auth';
 
-export default async function CoursePage({ params }: { params: { slug: string } }) {
-  const session = await auth();
+export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const session = await getServerSession(authOptions);
 
   if (!session?.user) {
-    redirect(`/login?redirect=/course/${params.slug}`);
+    redirect(`/login?redirect=/course/${slug}`);
     return null;
   }
-
-  const course = await getCourseBySlug(params.slug);
+  const course = await getCourseBySlug(slug) as any;
 
   // Defensive: ensure course is a plain object with required fields
   if (!course || typeof course !== 'object' || !course.id) {
@@ -33,7 +34,9 @@ export default async function CoursePage({ params }: { params: { slug: string } 
     WHERE p.userId = ? AND m.courseId = ?
   `);
   const progressRaw = progressStmt.all(session.user.id, course.id);
-  const progress = Array.isArray(progressRaw) ? progressRaw : [];
+  // Defensive: ensure progress is Progress[]
+  type Progress = { id: string; userId: string; lessonId: string; completed: number; watchTime?: number; createdAt?: string; updatedAt?: string };
+  const progress: Progress[] = Array.isArray(progressRaw) ? progressRaw as Progress[] : [];
 
   // Optionally, normalize progress objects if CoursePlayerClient expects specific fields
   // const normalizedProgress = progress.map(p => ({

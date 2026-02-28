@@ -125,7 +125,7 @@ export default function DashboardClient({ user, enrollments, certificates }: Das
 
           {enrollments.length === 0 ? (
             <div className="glass rounded-2xl p-12 text-center">
-              <p className="text-white/60 mb-6">You haven't enrolled in any courses yet</p>
+              <p className="text-white/60 mb-6">You haven&apos;t enrolled in any courses yet</p>
               <Link 
                 href="/courses"
                 className="inline-block px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-accent-gold transition-all"

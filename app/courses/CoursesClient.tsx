@@ -28,6 +28,7 @@ interface CoursesClientProps {
 }
 
 export default function CoursesClient({ courses, userEnrollments, isLoggedIn }: CoursesClientProps) {
+  const enrollmentIds = Array.isArray(userEnrollments) ? userEnrollments : [];
   return (
     <div className="min-h-screen">
       <Header />
@@ -59,7 +60,8 @@ export default function CoursesClient({ courses, userEnrollments, isLoggedIn }: 
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {courses.map((course, index) => {
-                  const isEnrolled = userEnrollments.includes(course.id);
+                  const isEnrolled = enrollmentIds.includes(course.id);
+                  const modulesCount = course._count?.modules ?? 0;
                   
                   return (
                     <motion.div
@@ -111,7 +113,7 @@ export default function CoursesClient({ courses, userEnrollments, isLoggedIn }: 
 
                         <div className="flex items-center justify-between text-sm text-white/50 mb-4">
                           <span>{course.duration}</span>
-                          <span>{course._count.modules} modules</span>
+                          <span>{modulesCount} modules</span>
                         </div>
 
                         <div className="flex items-center justify-between">

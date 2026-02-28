@@ -1,10 +1,11 @@
-import { auth } from '@/lib/auth'
+import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { sqlite } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
 // ...existing imports...
 
 export default async function AdminCoursesPage() {
-  const session = await auth()
+  const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
   if (session.user.role !== 'ADMIN') redirect('/dashboard')
 

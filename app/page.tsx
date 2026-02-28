@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ScrollMorphHero from "@/components/ui/scroll-morph-hero";
+import VisualGrid from '@/components/ui/visual-grid';
 
 export default function Home() {
   return (
@@ -85,6 +86,17 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
+          {/* Visual examples to make sections more image-forward */}
+          <VisualGrid
+            images={[
+              { src: '/IMG_8398.jpg', caption: 'Focused mentorship' },
+              { src: '/IMG_3710.jpg', caption: 'Hands-on practice' },
+              { src: '/IMG_5014.jpg', caption: 'Creative collaboration' },
+              { src: '/3U4A1815.jpg', caption: 'Business strategy' },
+              { src: '/3U4A1894.jpg', caption: 'AI & tooling' },
+              { src: '/3U4A1905.jpg', caption: 'Selective cohorts' },
+            ]}
+          />
         </div>
       </section>
 
@@ -171,7 +183,7 @@ export default function Home() {
               viewport={{ once: true }}
               className="glass rounded-2xl p-8 text-center"
             >
-              <div className="text-4xl mb-4">🏫</div>
+              <img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80" alt="campus" className="w-full h-40 object-cover rounded-lg mb-4" />
               <h3 className="text-xl font-display font-bold mb-3">Physical Campus</h3>
               <p className="text-white/70">
                 Our primary focus is in-person education with direct mentor access and hands-on training.
@@ -185,7 +197,7 @@ export default function Home() {
               transition={{ delay: 0.1 }}
               className="glass rounded-2xl p-8 text-center"
             >
-              <div className="text-4xl mb-4">👥</div>
+              <img src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=800&q=80" alt="cohorts" className="w-full h-40 object-cover rounded-lg mb-4" />
               <h3 className="text-xl font-display font-bold mb-3">Small Cohorts</h3>
               <p className="text-white/70">
                 Limited in-person cohorts ensure quality, personalized attention, and real mentorship.
@@ -199,7 +211,7 @@ export default function Home() {
               transition={{ delay: 0.2 }}
               className="glass rounded-2xl p-8 text-center"
             >
-              <div className="text-4xl mb-4">💻</div>
+              <img src="https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&q=80" alt="online" className="w-full h-40 object-cover rounded-lg mb-4" />
               <h3 className="text-xl font-display font-bold mb-3">Online Alternative</h3>
               <p className="text-white/70">
                 For those who cannot attend physically, we offer select online programs with digital access.
@@ -210,7 +222,7 @@ export default function Home() {
       </section>
 
       {/* Programs Preview */}
-      <section className="py-20 px-6 bg-gradient-to-b from-purple-950/10 to-transparent">
+      <section id="programs" className="py-20 px-6 bg-gradient-to-b from-purple-950/10 to-transparent">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0 }}
@@ -258,6 +270,16 @@ export default function Home() {
                     Most Popular
                   </div>
                 )}
+                {/* Program thumbnail */}
+                {(() => {
+                  const thumbs = [
+                    'https://images.unsplash.com/photo-1506765515384-028b60a970df?w=800&q=80',
+                    'https://images.unsplash.com/photo-1497366216548-37526070297c?w=800&q=80',
+                    'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80',
+                  ];
+                  const src = thumbs[index % thumbs.length];
+                  return <img src={src} alt={program.title} className="w-full h-40 object-cover rounded-lg mb-4" />;
+                })()}
                 <h3 className="text-2xl font-display font-bold mb-2">{program.title}</h3>
                 <p className="text-3xl font-bold mb-6 gradient-text">{program.price}</p>
                 <ul className="space-y-2 text-white/70">
@@ -266,7 +288,9 @@ export default function Home() {
                   ))}
                 </ul>
                 <Link 
-                  href="/apply"
+                  href={
+                    program.title.includes('Online') ? `/payments/checkout?program=${encodeURIComponent(program.title)}` : `/apply?program=${encodeURIComponent(program.title)}`
+                  }
                   className="block mt-8 px-6 py-3 bg-white/10 hover:bg-white/20 rounded-lg text-center font-semibold transition-all duration-300"
                 >
                   Apply
@@ -315,7 +339,7 @@ export default function Home() {
             <h2 className="text-4xl md:text-6xl font-display font-bold mb-6">
               Access Is Not Automatic.
               <br />
-              <span className="gradient-text">It's Earned.</span>
+              <span className="gradient-text">It&apos;s Earned.</span>
             </h2>
             <p className="text-xl text-white/70 mb-10">
               Submit your application. Limited cohorts. Selective admission.

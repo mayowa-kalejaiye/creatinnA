@@ -75,7 +75,7 @@ export default function AlumniPage() {
                 </div>
                 <div>
                   <h3 className="text-xl font-display font-semibold mb-4 text-white/50">
-                    What It's Not
+                    What It&apos;s Not
                   </h3>
                   <ul className="space-y-3 text-white/50">
                     <li className="flex items-start">
@@ -174,7 +174,7 @@ export default function AlumniPage() {
                   <strong className="text-white">You have creative skills.</strong> You can edit, design, or produce.
                 </p>
                 <p>
-                  <strong className="text-white">You're disciplined.</strong> You complete what you start.
+                  <strong className="text-white">You&apos;re disciplined.</strong> You complete what you start.
                 </p>
                 <p>
                   <strong className="text-white">You think long-term.</strong> You want to build value, not just make quick money.

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sqlite } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
+import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { lessonId, completed, watchTime } = await req.json();
@@ -26,6 +27,24 @@ export async function POST(req: NextRequest) {
         now,
         now
       );
+
+    // Also write into lowercase table for compatibility
+    try {
+      sqlite.prepare(
+        `INSERT OR REPLACE INTO "progress"(id, userId, lessonId, completed, watchTime, createdAt, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now()),
+        userId,
+        lessonId,
+        completed ? 1 : 0,
+        Number(watchTime || 0),
+        now,
+        now
+      );
+    } catch (e) {
+      // ignore if table missing
+    }
 
     const row = sqlite.prepare('SELECT * FROM "Progress" WHERE userId = ? AND lessonId = ?').get(userId, lessonId);
     return NextResponse.json(row);

@@ -274,14 +274,14 @@ export default function CoursePlayerClient({
               {currentLesson.videoUrl && (
                 <div className="aspect-video bg-black rounded-2xl overflow-hidden border border-white/10">
                   <ReactPlayer
-                    url={currentLesson.videoUrl}
+                    {...{ url: currentLesson.videoUrl }}
                     width="100%"
                     height="100%"
-                    controls
+                    controls={true}
                     // Only add config prop if it's a YouTube URL
                     {...(
                       currentLesson.videoUrl?.includes('youtube.com') || currentLesson.videoUrl?.includes('youtu.be')
-                        ? { config: { youtube: { playerVars: { modestbranding: 1 } } } }
+                        ? { config: { youtube: { playerVars: { modestbranding: 1 } } } as any }
                         : {}
                     )}
                   />

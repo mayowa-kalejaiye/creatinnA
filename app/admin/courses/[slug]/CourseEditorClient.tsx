@@ -87,10 +87,10 @@ export default function CourseEditorClient({ course }: { course: Course }) {
       });
 
       if (res.ok) {
-        const module = await res.json();
+        const moduleData = await res.json();
         setCourseData({
           ...courseData,
-          modules: [...courseData.modules, { ...module, lessons: [] }]
+          modules: [...courseData.modules, { ...moduleData, lessons: [] }]
         });
         setNewModule({ title: '', description: '' });
         setShowModuleForm(false);

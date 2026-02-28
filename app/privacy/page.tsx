@@ -26,7 +26,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-2xl font-display font-bold mb-4">1. Introduction</h2>
                 <p className="text-white/70 leading-relaxed">
-                  CreatINN Academy ("we," "our," or "us") respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you visit our website or apply to our programs.
+                  CreatINN Academy (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you visit our website or apply to our programs.
                 </p>
               </section>
 
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-2xl font-display font-bold mb-4">8. Changes to This Policy</h2>
                 <p className="text-white/70 leading-relaxed">
-                  We may update this privacy policy from time to time. We will notify you of significant changes by posting the new policy on this page with an updated "Last updated" date.
+                  We may update this privacy policy from time to time. We will notify you of significant changes by posting the new policy on this page with an updated &quot;Last updated&quot; date.
                 </p>
               </section>
 

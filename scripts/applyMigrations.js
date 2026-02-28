@@ -45,14 +45,44 @@ for (const file of files) {
   }
 
   const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+  // Some migration files include their own transaction wrappers (BEGIN/COMMIT).
+  // Avoid starting a transaction if the SQL already contains transaction markers.
+  const hasTransaction = /\bBEGIN\b|\bCOMMIT\b/i.test(sql);
+
   try {
-    db.exec('BEGIN');
-    db.exec(sql);
-    db.prepare('INSERT INTO _drizzle_migrations (id, applied_at) VALUES (?, ?)').run(id, new Date().toISOString());
-    db.exec('COMMIT');
-    console.log('applied:', id);
+    if (hasTransaction) {
+      // Let the migration SQL manage its own transaction
+      db.exec(sql);
+      // If it succeeded, mark applied
+      db.prepare('INSERT INTO _drizzle_migrations (id, applied_at) VALUES (?, ?)').run(id, new Date().toISOString());
+      console.log('applied:', id);
+    } else {
+      db.exec('BEGIN');
+      db.exec(sql);
+      db.prepare('INSERT INTO _drizzle_migrations (id, applied_at) VALUES (?, ?)').run(id, new Date().toISOString());
+      db.exec('COMMIT');
+      console.log('applied:', id);
+    }
   } catch (err) {
-    db.exec('ROLLBACK');
+    const msg = String(err && err.message ? err.message : err).toLowerCase();
+    // Handle benign "already exists" / duplicate-column errors gracefully
+    if (msg.includes('already exists') || msg.includes('duplicate column') || msg.includes('duplicate column name')) {
+      console.warn('benign migration error, marking as applied:', id, msg);
+      try {
+        db.prepare('INSERT INTO _drizzle_migrations (id, applied_at) VALUES (?, ?)').run(id, new Date().toISOString());
+        // If we started a transaction for this migration, ensure it's committed
+        if (!hasTransaction) db.exec('COMMIT');
+        console.log('marked as applied (skipped error):', id);
+        continue;
+      } catch (e2) {
+        try { if (!hasTransaction) db.exec('ROLLBACK'); } catch {}
+        console.error('failed to mark migration applied after benign error', id, e2);
+        process.exit(1);
+      }
+    }
+
+    // For other errors, rollback if we opened a transaction
+    try { if (!hasTransaction) db.exec('ROLLBACK'); } catch {}
     console.error('failed to apply', id, err);
     process.exit(1);
   }

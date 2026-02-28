@@ -40,11 +40,7 @@ function FlipCard({
                 scale: target.scale,
                 opacity: target.opacity,
             }}
-            transition={{
-                type: "spring",
-                stiffness: 1000,
-                damping: 400,
-            }}
+            transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
 
             // Initial style
             style={{
@@ -65,12 +61,16 @@ function FlipCard({
                 {/* Front Face */}
                 <div
                     className="absolute inset-0 h-full w-full overflow-hidden rounded-xl shadow-lg bg-gray-200"
-                    style={{ backfaceVisibility: "hidden" }}
+                    style={{ backfaceVisibility: "hidden", willChange: "transform, opacity" }}
                 >
                     <img
                         src={src}
                         alt={`hero-${index}`}
                         className="h-full w-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        width={IMG_WIDTH}
+                        height={IMG_HEIGHT}
                     />
                     <div className="absolute inset-0 bg-black/10 transition-colors group-hover:bg-transparent" />
                 </div>
@@ -91,140 +91,67 @@ function FlipCard({
 }
 
 // --- Main Hero Component ---
-const TOTAL_IMAGES = 20;
-const MAX_SCROLL = 3000; // Virtual scroll range
-const MAX_VIRTUAL_SCROLL = 900; // Only allow animation scroll up to this value
+// Reduce images and complexity to improve performance
+const TOTAL_IMAGES = 8;
+const MAX_SCROLL = 3000; // kept for legacy mapping
+const MAX_VIRTUAL_SCROLL = 600;
+const SCROLL_SENSITIVITY = 120; // lower sensitivity
 
-// Unsplash Images
+// Local Images from public folder
 const IMAGES = [
-    "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=300&q=80",
-    "https://images.unsplash.com/photo-1519710164239-da123dc03ef4?w=300&q=80",
-    "https://images.unsplash.com/photo-1497366216548-37526070297c?w=300&q=80",
-    "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=300&q=80",
-    "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=300&q=80",
-    "https://images.unsplash.com/photo-1506765515384-028b60a970df?w=300&q=80",
-    "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=300&q=80",
-    "https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=300&q=80",
-    "https://images.unsplash.com/photo-1500485035595-cbe6f645feb1?w=300&q=80",
-    "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=300&q=80",
-    "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=300&q=80",
-    "https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9?w=300&q=80",
-    "https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=300&q=80",
-    "https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=300&q=80",
-    "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=300&q=80",
-    "https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?w=300&q=80",
-    "https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=300&q=80",
-    "https://images.unsplash.com/photo-1518173946687-a4c8892bbd9f?w=300&q=80",
-    "https://images.unsplash.com/photo-1523961131990-5ea7c61b2107?w=300&q=80",
-    "https://images.unsplash.com/photo-1496568816309-51d7c20e3b21?w=300&q=80",
+    "/3U4A1815.jpg",
+    "/3U4A1894.jpg",
+    "/3U4A1905.jpg",
+    "/3U4A8829.jpg",
+    "/3U4A9420.jpg",
+    "/DSC_0393.jpg",
+    "/FLY 16.JPG",
+    "/IMG_0515.jpg",
+    "/IMG_0657.jpg",
+    "/IMG_0691.jpg",
+    "/IMG_0905.jpg",
+    "/IMG_0910.jpg",
+    "/IMG_0965.jpg",
+    "/IMG_2341.jpg",
+    "/IMG_2400.jpg",
+    "/IMG_3188.JPG",
+    "/IMG_3202.JPG",
+    "/IMG_3514.JPG",
+    "/IMG_3710.jpg",
+    "/IMG_5014.jpg",
 ];
 
 // Helper for linear interpolation
 const lerp = (start: number, end: number, t: number) => start * (1 - t) + end * t;
 
 export default function IntroAnimation() {
-    const [introPhase, setIntroPhase] = useState<AnimationPhase>("scatter");
+    // Disable intro animation on refresh: start in final phase
+    const [introPhase, setIntroPhase] = useState<AnimationPhase>("circle");
     const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
-    const [virtualScroll, setVirtualScroll] = useState(0);
+    const bodyScrollPos = useRef<number | null>(null);
+    // Virtual scroll removed for performance; rely on page scroll
+    const [imagesLoaded] = useState(true);
 
-    // --- Lock/Unlock page scroll based on hero position and animation state ---
-    useEffect(() => {
-        const checkLock = () => {
-            const hero = containerRef.current;
-            if (!hero) return;
-            const rect = hero.getBoundingClientRect();
-            // Only lock scroll if hero is fully at the top and animation not finished
-            if (
-                rect.top <= 0 &&
-                rect.bottom > window.innerHeight / 2 && // hero is still visible
-                virtualScroll < MAX_VIRTUAL_SCROLL
-            ) {
-                document.body.style.overflow = "hidden";
-            } else {
-                document.body.style.overflow = "";
-            }
-        };
-        checkLock();
-        window.addEventListener("scroll", checkLock, { passive: true });
-        window.addEventListener("resize", checkLock, { passive: true });
-        return () => {
-            document.body.style.overflow = "";
-            window.removeEventListener("scroll", checkLock);
-            window.removeEventListener("resize", checkLock);
-        };
-    }, [virtualScroll]);
+    // Removed eager preloading of many images to reduce startup cost.
 
-    // --- Virtual Scroll Logic ---
-    useEffect(() => {
-        const container = containerRef.current;
-        if (!container) return;
-
-        const handleWheel = (e: WheelEvent) => {
-            if (virtualScroll < MAX_VIRTUAL_SCROLL || (virtualScroll === MAX_VIRTUAL_SCROLL && e.deltaY < 0)) {
-                e.preventDefault();
-                setVirtualScroll((prev) => {
-                    let next = prev + e.deltaY;
-                    if (next < 0) next = 0;
-                    if (next > MAX_VIRTUAL_SCROLL) next = MAX_VIRTUAL_SCROLL;
-                    return next;
-                });
-            }
-        };
-
-        // Touch support
-        let touchStartY = 0;
-        const handleTouchStart = (e: TouchEvent) => {
-            touchStartY = e.touches[0].clientY;
-        };
-        const handleTouchMove = (e: TouchEvent) => {
-            const touchY = e.touches[0].clientY;
-            const deltaY = touchStartY - touchY;
-            touchStartY = touchY;
-            if (virtualScroll < MAX_VIRTUAL_SCROLL || (virtualScroll === MAX_VIRTUAL_SCROLL && deltaY < 0)) {
-                setVirtualScroll((prev) => {
-                    let next = prev + deltaY;
-                    if (next < 0) next = 0;
-                    if (next > MAX_VIRTUAL_SCROLL) next = MAX_VIRTUAL_SCROLL;
-                    return next;
-                });
-            }
-        };
-
-        container.addEventListener("wheel", handleWheel, { passive: false });
-        container.addEventListener("touchstart", handleTouchStart, { passive: false });
-        container.addEventListener("touchmove", handleTouchMove, { passive: false });
-
-        return () => {
-            container.removeEventListener("wheel", handleWheel);
-            container.removeEventListener("touchstart", handleTouchStart);
-            container.removeEventListener("touchmove", handleTouchMove);
-        };
-    }, [virtualScroll]);
+    // Lock/unlock helpers moved to component scope so other effects can call them
+    // Removed virtual-scroll locking and pointer/wheel interception to reduce CPU and avoid heavy event handling.
 
     // --- Container Size ---
     useEffect(() => {
         if (!containerRef.current) return;
 
-        const handleResize = (entries: ResizeObserverEntry[]) => {
-            for (const entry of entries) {
-                setContainerSize({
-                    width: entry.contentRect.width,
-                    height: entry.contentRect.height,
-                });
-            }
+        const handleResize = () => {
+            setContainerSize({
+                width: containerRef.current!.offsetWidth,
+                height: containerRef.current!.offsetHeight,
+            });
         };
 
-        const observer = new ResizeObserver(handleResize);
-        observer.observe(containerRef.current);
-
-        // Initial set
-        setContainerSize({
-            width: containerRef.current.offsetWidth,
-            height: containerRef.current.offsetHeight,
-        });
-
-        return () => observer.disconnect();
+        window.addEventListener("resize", handleResize, { passive: true });
+        handleResize();
+        return () => window.removeEventListener("resize", handleResize);
     }, []);
 
     // --- Page Scroll Logic ---
@@ -243,58 +170,59 @@ export default function IntroAnimation() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    // Set the scroll range for the animation (e.g., 0 to 600px of scroll)
+    // Map page scroll to morph progress (simple, performs well)
     const morphProgress = useMemo(
-        () => Math.min(Math.max(virtualScroll / MAX_VIRTUAL_SCROLL, 0), 1),
-        [virtualScroll]
+        () => Math.min(Math.max(pageScroll / 600, 0), 1),
+        [pageScroll]
     );
 
     // For scrollRotate, use a similar mapping:
     const scrollRotateValue = Math.min(Math.max((pageScroll - 600) / (3000 - 600), 0), 1) * 360;
     const rotateValue = scrollRotateValue;
 
-    // --- Intro Sequence ---
-    useEffect(() => {
-        const timer1 = setTimeout(() => setIntroPhase("line"), 500);
-        const timer2 = setTimeout(() => setIntroPhase("circle"), 2500);
-        return () => { clearTimeout(timer1); clearTimeout(timer2); };
-    }, []);
+    // Intro sequence disabled — component renders in final state immediately.
 
     // --- Random Scatter Positions ---
     const scatterPositions = useMemo(() => {
-        return IMAGES.map(() => ({
-            x: (Math.random() - 0.5) * 1500,
-            y: (Math.random() - 0.5) * 1000,
-            rotation: (Math.random() - 0.5) * 180,
-            scale: 0.6,
+        return IMAGES.slice(0, TOTAL_IMAGES).map(() => ({
+            x: (Math.random() - 0.5) * 900,
+            y: (Math.random() - 0.5) * 600,
+            rotation: (Math.random() - 0.5) * 90,
+            scale: 0.7,
             opacity: 0,
         }));
     }, []);
 
     // --- Render Loop (Manual Calculation for Morph) ---
-    const [morphValue, setMorphValue] = useState(0);
+    // `heroProgress` captures the initial scroll-driven hero animation (0..RELEASE_THRESHOLD).
+    // We allow a small overshoot so the hero holds before normal page scroll resumes.
+    const RELEASE_THRESHOLD = 1.2;
+    const [heroProgress, setHeroProgress] = useState(0);
     const [rotateValueState, setRotateValue] = useState(0);
     const [parallaxValue, setParallaxValue] = useState(0);
-
-    useEffect(() => {
-        setMorphValue(morphProgress);
-    }, [morphProgress]);
 
     useEffect(() => {
         setRotateValue(rotateValue);
     }, [rotateValue]);
 
     // --- Content Opacity ---
-    // Fade in content when arc is formed (morphValue > 0.8)
-    // Manual interpolation since morphValue is a number, not a MotionValue
+    // Use a clipped visual progress (0..1) for rendering while `heroProgress` may exceed 1
+    const visualsProgress = Math.min(heroProgress, 1);
+    // Fade in content when arc is formed (visualsProgress > 0.8)
     const contentOpacity =
-        morphValue <= 0.8 ? 0 :
-        morphValue >= 1 ? 1 :
-        (morphValue - 0.8) / 0.2;
+        visualsProgress <= 0.8 ? 0 :
+        visualsProgress >= 1 ? 1 :
+        (visualsProgress - 0.8) / 0.2;
     const contentY =
-        morphValue <= 0.8 ? 20 :
-        morphValue >= 1 ? 0 :
-        20 - ((morphValue - 0.8) / 0.2) * 20;
+        visualsProgress <= 0.8 ? 20 :
+        visualsProgress >= 1 ? 0 :
+        20 - ((visualsProgress - 0.8) / 0.2) * 20;
+
+    // Attach hero scroll intercept that consumes initial scroll to advance the hero animation
+    useHeroScrollIntercept(containerRef, heroProgress, (v) => {
+        if (typeof v === 'function') setHeroProgress(v as any);
+        else setHeroProgress(v);
+    });
 
     return (
         <div
@@ -303,6 +231,16 @@ export default function IntroAnimation() {
             tabIndex={-1}
             style={{ touchAction: "none" }} // Prevent mobile overscroll
         >
+            {/* Loading State */}
+            {!imagesLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#FAFAFA] z-50">
+                    <div className="text-center">
+                        <div className="w-8 h-8 border-4 border-gray-300 border-t-gray-800 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-sm text-gray-600 font-medium">Loading...</p>
+                    </div>
+                </div>
+            )}
+            
             {/* Container */}
             <div className="flex h-full w-full flex-col items-center justify-center perspective-1000">
 
@@ -310,7 +248,7 @@ export default function IntroAnimation() {
                 <div className="absolute z-0 flex flex-col items-center justify-center text-center pointer-events-none top-1/2 -translate-y-1/2">
                     <motion.h1
                         initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
-                        animate={introPhase === "circle" && morphValue < 0.5 ? { opacity: 1 - morphValue * 2, y: 0, filter: "blur(0px)" } : { opacity: 0, filter: "blur(10px)" }}
+                        animate={introPhase === "circle" && visualsProgress < 0.5 ? { opacity: 1 - visualsProgress * 2, y: 0, filter: "blur(0px)" } : { opacity: 0, filter: "blur(10px)" }}
                         transition={{ duration: 1 }}
                         className="text-2xl font-medium tracking-tight text-gray-800 md:text-4xl"
                     >
@@ -318,7 +256,7 @@ export default function IntroAnimation() {
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0 }}
-                        animate={introPhase === "circle" && morphValue < 0.5 ? { opacity: 0.5 - morphValue } : { opacity: 0 }}
+                        animate={introPhase === "circle" && visualsProgress < 0.5 ? { opacity: 0.5 - visualsProgress } : { opacity: 0 }}
                         transition={{ duration: 1, delay: 0.2 }}
                         className="mt-4 text-xs font-bold tracking-[0.2em] text-gray-500"
                     >
@@ -329,7 +267,7 @@ export default function IntroAnimation() {
                 {/* Arc Active Content (Fades in) */}
                 <motion.div
                     style={{ opacity: contentOpacity, y: contentY }}
-                    className="absolute top-[10%] z-10 flex flex-col items-center justify-center text-center pointer-events-none px-4"
+                    className="absolute top-[20%] z-10 flex flex-col items-center justify-center text-center pointer-events-none px-4"
                 >
                     <h2 className="text-3xl md:text-5xl font-semibold text-gray-900 tracking-tight mb-4">
                         Where Creative Skills Meet Business Mastery
@@ -421,12 +359,12 @@ export default function IntroAnimation() {
                                 scale: isMobile ? 1.4 : 1.8, // Increased scale for active state
                             };
 
-                            // C. Interpolate (Morph)
+                            // C. Interpolate (Morph) using visualsProgress so visuals don't jump when overshooting
                             target = {
-                                x: lerp(circlePos.x, arcPos.x, morphValue),
-                                y: lerp(circlePos.y, arcPos.y, morphValue),
-                                rotation: lerp(circlePos.rotation, arcPos.rotation, morphValue),
-                                scale: lerp(1, arcPos.scale, morphValue),
+                                x: lerp(circlePos.x, arcPos.x, visualsProgress),
+                                y: lerp(circlePos.y, arcPos.y, visualsProgress),
+                                rotation: lerp(circlePos.rotation, arcPos.rotation, visualsProgress),
+                                scale: lerp(1, arcPos.scale, visualsProgress),
                                 opacity: 1,
                             };
                         }
@@ -446,5 +384,81 @@ export default function IntroAnimation() {
             </div>
         </div>
     );
+}
+
+// --- Hero scroll interception: consume initial scroll to drive hero animation ---
+function clamp(v: number, a = 0, b = 1) { return Math.max(a, Math.min(b, v)); }
+
+export function useHeroScrollIntercept(containerRef: React.RefObject<HTMLDivElement>, heroProgress: number, setHeroProgress: (v: number|((p:number)=>number)) => void) {
+    useEffect(() => {
+        const el = containerRef.current;
+        if (!el) return;
+
+        let touchStartY = 0;
+
+        const onWheel = (e: WheelEvent) => {
+            const rect = el.getBoundingClientRect();
+            const heroInView = rect.top <= 0 && rect.bottom > window.innerHeight / 2;
+            const heroFullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+            if (!heroInView) return;
+            const delta = e.deltaY;
+            const factor = 0.0012; // tuned for reasonable sensitivity
+            // Scroll down: allow interception until release threshold
+            if (delta > 0) {
+                if (heroProgress >= RELEASE_THRESHOLD) return; // allow native scroll once beyond threshold
+                e.preventDefault();
+                setHeroProgress((p: number) => clamp(typeof p === 'number' ? p + delta * factor : (p as any), 0, RELEASE_THRESHOLD));
+                return;
+            }
+            // Scroll up (reverse): only intercept when hero is fully visible and progress > 0
+            if (delta < 0) {
+                if (!heroFullyVisible) return; // don't rewind unless hero fully in view
+                if (heroProgress <= 0) return;
+                e.preventDefault();
+                setHeroProgress((p: number) => clamp(typeof p === 'number' ? p + delta * factor : (p as any), 0, RELEASE_THRESHOLD));
+                return;
+            }
+        };
+
+        const onTouchStart = (e: TouchEvent) => {
+            touchStartY = e.touches[0].clientY;
+        };
+
+        const onTouchMove = (e: TouchEvent) => {
+            const rect = el.getBoundingClientRect();
+            const heroInView = rect.top <= 0 && rect.bottom > window.innerHeight / 2;
+            const heroFullyVisible = rect.top >= 0 && rect.bottom <= window.innerHeight;
+            if (!heroInView) return;
+            const y = e.touches[0].clientY;
+            const delta = touchStartY - y;
+            touchStartY = y;
+            const factor = 0.0022;
+            // Swipe/drag down (delta>0) advances animation
+            if (delta > 0) {
+                if (heroProgress >= RELEASE_THRESHOLD) return;
+                e.preventDefault();
+                setHeroProgress((p: number) => clamp(typeof p === 'number' ? p + delta * factor : (p as any), 0, RELEASE_THRESHOLD));
+                return;
+            }
+            // Swipe/drag up (delta<0) — rewind only when hero fully visible
+            if (delta < 0) {
+                if (!heroFullyVisible) return;
+                if (heroProgress <= 0) return;
+                e.preventDefault();
+                setHeroProgress((p: number) => clamp(typeof p === 'number' ? p + delta * factor : (p as any), 0, RELEASE_THRESHOLD));
+                return;
+            }
+        };
+
+        window.addEventListener('wheel', onWheel, { passive: false });
+        window.addEventListener('touchstart', onTouchStart, { passive: true });
+        window.addEventListener('touchmove', onTouchMove, { passive: false });
+
+        return () => {
+            window.removeEventListener('wheel', onWheel);
+            window.removeEventListener('touchstart', onTouchStart);
+            window.removeEventListener('touchmove', onTouchMove);
+        };
+    }, [containerRef, heroProgress, setHeroProgress]);
 }
 

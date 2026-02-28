@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sqlite } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
+import { authOptions } from '@/lib/auth';
+import { getServerSession } from 'next-auth';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { courseId: string } }
+  { params }: { params: Promise<{ courseId: string }> }
 ) {
+  const { courseId } = await params;
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -62,14 +64,14 @@ export async function PUT(
     values.push(new Date().toISOString());
 
     // WHERE id param
-    values.push(params.courseId);
+    values.push(courseId);
 
     const sql = `UPDATE "Course" SET ${assignments.join(', ')} WHERE id = ?`;
     sqlite.prepare(sql).run(...values);
 
     const updated = sqlite
       .prepare('SELECT * FROM "Course" WHERE id = ?')
-      .get(params.courseId);
+      .get(courseId);
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -80,16 +82,17 @@ export async function PUT(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { courseId: string } }
+  { params }: { params: Promise<{ courseId: string }> }
 ) {
+  const { courseId } = await params;
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
 
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    sqlite.prepare('DELETE FROM "Course" WHERE id = ?').run(params.courseId);
+    sqlite.prepare('DELETE FROM "Course" WHERE id = ?').run(courseId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

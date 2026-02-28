@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sqlite } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
+import { getServerSession } from "next-auth";
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { courseId: string } }
+  { params }: { params: Promise<{ courseId: string }> }
 ) {
+  const { courseId } = await params;
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
     if (!session?.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const userId = session.user.id;
-    const courseId = params.courseId;
 
     // ensure not already enrolled
     const exists = sqlite

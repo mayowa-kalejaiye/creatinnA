@@ -222,7 +222,7 @@ export default function ApplyPage() {
                     Submit Application
                   </button>
                   <p className="text-xs text-white/40 text-center mt-4">
-                    We'll review your application within 3-5 business days
+                    We&apos;ll review your application within 3-5 business days
                   </p>
                 </div>
               </form>

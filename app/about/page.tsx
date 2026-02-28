@@ -46,7 +46,7 @@ export default function AboutPage() {
                 We help people turn creative skills into real income and long-term leverage.
               </p>
               <p className="text-xl text-white/70 leading-relaxed">
-                We don't just teach how to create. We teach how creativity becomes an economic asset—through systems, pricing, clients, and repeatable execution.
+                We don&apos;t just teach how to create. We teach how creativity becomes an economic asset—through systems, pricing, clients, and repeatable execution.
               </p>
               <p className="text-lg text-white/50 italic mt-6">
                 Because creative skill without business intelligence leads to poverty.
@@ -173,7 +173,7 @@ export default function AboutPage() {
                     Long-Term Value Over Quick Wins
                   </h3>
                   <p className="text-white/70">
-                    We don't promise fast money or shortcuts. We build capacity for sustained success, strategic thinking, and compounding value over time.
+                    We don&apos;t promise fast money or shortcuts. We build capacity for sustained success, strategic thinking, and compounding value over time.
                   </p>
                 </div>
 

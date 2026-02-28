@@ -21,10 +21,10 @@ export default async function AdminDashboardPage() {
   const totalEnrollmentsRow = sqlite.prepare(`SELECT COUNT(1) as cnt FROM "enrollments"`).get();
   const totalRevenueRow = sqlite.prepare(`SELECT COALESCE(SUM(amount), 0) as total FROM "payments" WHERE status = 'successful'`).get();
 
-  const totalStudents = totalStudentsRow?.cnt ?? 0;
-  const totalCourses = totalCoursesRow?.cnt ?? 0;
-  const totalEnrollments = totalEnrollmentsRow?.cnt ?? 0;
-  const totalRevenue = totalRevenueRow?.total ?? 0;
+  const totalStudents = (totalStudentsRow as any)?.cnt ?? 0;
+  const totalCourses = (totalCoursesRow as any)?.cnt ?? 0;
+  const totalEnrollments = (totalEnrollmentsRow as any)?.cnt ?? 0;
+  const totalRevenue = (totalRevenueRow as any)?.total ?? 0;
 
   // Recent enrollments (with user name/email and course title)
   const recentEnrollments = sqlite
@@ -39,6 +39,18 @@ export default async function AdminDashboardPage() {
        LIMIT 10`
     )
     .all();
+
+  // Normalize recentEnrollments to match client shape (nest user and course)
+  const recentEnrollmentsNormalized = recentEnrollments.map((r: any) => ({
+    id: r.id,
+    userId: r.userId,
+    courseId: r.courseId,
+    status: r.status,
+    progress: r.progress,
+    enrolledAt: r.enrolledAt,
+    user: { name: r.userName, email: r.userEmail },
+    course: { title: r.courseTitle },
+  }));
 
   // Courses with counts (enrollments, modules)
   const courses = sqlite
@@ -57,6 +69,15 @@ export default async function AdminDashboardPage() {
     )
     .all();
 
+  // Ensure courses include a Prisma-like _count object for enrollments/modules
+  const coursesNormalized = courses.map((c: any) => ({
+    ...c,
+    _count: {
+      enrollments: c.enrollmentsCount ?? 0,
+      modules: c.modulesCount ?? 0,
+    }
+  }));
+
   // Pending applications with user info
   const pendingApplications = sqlite
     .prepare(
@@ -68,6 +89,12 @@ export default async function AdminDashboardPage() {
     )
     .all();
 
+  // Normalize pending applications to include nested user
+  const pendingApplicationsNormalized = pendingApplications.map((a: any) => ({
+    ...a,
+    user: { name: a.userName, email: a.userEmail, phone: a.userPhone }
+  }));
+
   return (
     <AdminDashboardClient
       stats={{
@@ -76,9 +103,9 @@ export default async function AdminDashboardPage() {
         totalEnrollments,
         totalRevenue,
       }}
-      recentEnrollments={recentEnrollments}
-      courses={courses}
-      pendingApplications={pendingApplications}
+      recentEnrollments={recentEnrollmentsNormalized}
+      courses={coursesNormalized}
+      pendingApplications={pendingApplicationsNormalized}
     />
   );
 }

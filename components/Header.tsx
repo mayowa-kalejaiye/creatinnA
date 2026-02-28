@@ -34,7 +34,7 @@ export default function Header() {
             About
           </Link>
           <Link 
-            href="/apply"
+            href="/#programs"
             className="px-6 py-2.5 bg-white text-black font-semibold rounded-lg hover:bg-accent-gold transition-all duration-300"
           >
             Apply
@@ -67,10 +67,10 @@ export default function Header() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="md:hidden glass border-t border-white/10"
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="md:hidden bg-slate-900/95 backdrop-blur-sm border-t border-white/5 w-full"
         >
           <div className="px-6 py-4 flex flex-col gap-4">
             <Link href="/programs" className="text-white/80 hover:text-white py-2">
@@ -86,7 +86,7 @@ export default function Header() {
               About
             </Link>
             <Link 
-              href="/apply"
+              href="/#programs"
               className="px-6 py-3 bg-white text-black font-semibold rounded-lg text-center"
             >
               Apply

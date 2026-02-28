@@ -26,7 +26,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-2xl font-display font-bold mb-4">1. Agreement to Terms</h2>
                 <p className="text-white/70 leading-relaxed">
-                  By accessing or using CreatINN Academy's website and services, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
+                  By accessing or using CreatINN Academy&apos;s website and services, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
                 </p>
               </section>
 
