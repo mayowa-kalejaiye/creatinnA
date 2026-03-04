@@ -22,35 +22,41 @@ export const authConfig: AuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        console.log("Authorize called with:", credentials);
-        if (!credentials?.email || !credentials?.password) {
-          console.log("Missing credentials");
+        try {
+          console.log("Authorize called with:", credentials);
+          if (!credentials?.email || !credentials?.password) {
+            console.log("Missing credentials");
+            return null;
+          }
+          const user = await getUserByEmail(credentials.email as string);
+          if (!user) {
+            console.log("No user found");
+            return null;
+          }
+          const passwordMatch = await bcrypt.compare(
+            credentials.password as string,
+            (user as any).password
+          );
+          if (!passwordMatch) {
+            console.log("Password does not match");
+            return null;
+          }
+          if ((user as any).role === 'REVOKED') {
+            console.log("User access has been revoked:", (user as any).email);
+            return null;
+          }
+          console.log("Login successful for user:", (user as any).email);
+          return {
+            id: (user as any).id,
+            email: (user as any).email,
+            name: (user as any).name,
+            role: (user as any).role,
+          };
+        } catch (err) {
+          console.error('Auth authorize error:', err);
+          // Fail gracefully so NextAuth returns an auth error rather than crashing the endpoint
           return null;
         }
-        const user = await getUserByEmail(credentials.email as string);
-        if (!user) {
-          console.log("No user found");
-          return null;
-        }
-        const passwordMatch = await bcrypt.compare(
-          credentials.password as string,
-          (user as any).password
-        );
-        if (!passwordMatch) {
-          console.log("Password does not match");
-          return null;
-        }
-        if ((user as any).role === 'REVOKED') {
-          console.log("User access has been revoked:", (user as any).email);
-          return null;
-        }
-        console.log("Login successful for user:", (user as any).email);
-        return {
-          id: (user as any).id,
-          email: (user as any).email,
-          name: (user as any).name,
-          role: (user as any).role,
-        };
       }
     })
   ],
