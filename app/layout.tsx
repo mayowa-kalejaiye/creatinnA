@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "CreatINN Academy | Physical Creative Institution in Lagos",
@@ -15,6 +16,7 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased bg-black text-white font-sans">
         {children}
+        <Analytics />
       </body>
     </html>
   );

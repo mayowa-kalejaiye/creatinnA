@@ -7,17 +7,29 @@ function genId() {
 }
 
 export async function getUserByEmail(email: string) {
+  if (!sqlite) {
+    console.warn('getUserByEmail: sqlite not available in this environment')
+    return null
+  }
   const stmt = sqlite.prepare('SELECT * FROM "users" WHERE email = ?')
   const row = stmt.get(email)
   return row ?? null
 }
 
 export async function getUserById(id: string) {
+  if (!sqlite) {
+    console.warn('getUserById: sqlite not available in this environment')
+    return null
+  }
   const stmt = sqlite.prepare('SELECT * FROM "users" WHERE id = ?')
   return stmt.get(id) ?? null
 }
 
 export async function createUser(data: { name: string; email: string; password: string; phone?: string; role?: string }) {
+  if (!sqlite) {
+    console.warn('createUser: sqlite not available, skipping insert')
+    return null
+  }
   const id = genId()
   const now = new Date().toISOString()
   const role = data.role ?? 'STUDENT'
@@ -45,6 +57,10 @@ export async function getCourseBySlug(slug: string) {
 
   // Load modules (ordered by position) and attach lessons for each module
   try {
+    if (!sqlite) {
+      (course as any).modules = []
+      return course
+    }
     const modulesStmt = sqlite.prepare('SELECT * FROM "Module" WHERE courseId = ? ORDER BY position ASC')
     const lessonsStmt = sqlite.prepare('SELECT * FROM "Lesson" WHERE moduleId = ? ORDER BY createdAt ASC')
     const modulesRaw = (course && typeof course === 'object' && course !== null && 'id' in course) ? modulesStmt.all((course as any).id) || [] : []
