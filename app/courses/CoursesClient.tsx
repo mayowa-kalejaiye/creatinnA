@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import Footer from '@/components/Footer';
 
 interface Course {
@@ -73,11 +74,7 @@ export default function CoursesClient({ courses, userEnrollments, isLoggedIn }: 
                       {/* Thumbnail */}
                       <div className="aspect-video bg-gradient-to-br from-purple-900/50 to-black relative">
                         {course.thumbnail ? (
-                          <img 
-                            src={course.thumbnail} 
-                            alt={course.title}
-                            className="w-full h-full object-cover"
-                          />
+                          <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
                         ) : (
                           <div className="flex items-center justify-center h-full text-4xl">
                             🎓

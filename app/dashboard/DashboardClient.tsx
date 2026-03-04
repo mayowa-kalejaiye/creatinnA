@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import Image from 'next/image';
 import { signOut } from 'next-auth/react';
 import { useState } from 'react';
 
@@ -257,13 +258,9 @@ export default function DashboardClient({ user, enrollments: initialEnrollments,
                     <div className="relative z-10 flex flex-col h-full">
                       {/* Thumbnail */}
                       <div className="relative h-40 overflow-hidden bg-gradient-to-br from-purple-950/50 to-black">
-                        {enrollment.course.thumbnail ? (
-                          <img
-                            src={enrollment.course.thumbnail}
-                            alt={enrollment.course.title}
-                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                          />
-                        ) : (
+                                          {enrollment.course.thumbnail ? (
+                                            <Image src={enrollment.course.thumbnail} alt={enrollment.course.title} fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                                          ) : (
                           <div className="w-full h-full flex items-center justify-center">
                             <div className="w-12 h-12 rounded-2xl bg-white/[0.06] flex items-center justify-center">
                               <IconBook />

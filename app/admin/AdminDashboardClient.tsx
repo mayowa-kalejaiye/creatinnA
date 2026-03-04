@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
@@ -434,7 +435,9 @@ export default function AdminDashboardClient({
                       <div className="flex flex-col md:flex-row">
                         <div className="md:w-48 lg:w-56 shrink-0">
                           {course.thumbnail ? (
-                            <img src={course.thumbnail} alt="" className="w-full h-36 md:h-full object-cover" />
+                            <div className="relative w-full h-36 md:h-full">
+                              <Image src={course.thumbnail} alt="" fill className="object-cover" />
+                            </div>
                           ) : (
                             <div className="w-full h-36 md:h-full bg-gradient-to-br from-purple-900/30 to-black flex items-center justify-center">
                               <IconBook />

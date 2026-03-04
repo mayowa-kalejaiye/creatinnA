@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function NewCoursePage() {
   // Auth is enforced at the edge by middleware.ts — only ADMIN users reach this page.
@@ -135,7 +136,9 @@ export default function NewCoursePage() {
                 reader.readAsDataURL(f);
               }}
             />
-            {thumbnailUrl && <img src={thumbnailUrl} className="mt-3 w-48 h-28 object-cover rounded" alt="thumb" />}
+            {thumbnailUrl && (
+              <Image src={thumbnailUrl} alt="thumb" width={192} height={112} className="mt-3 rounded object-cover" />
+            )}
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">

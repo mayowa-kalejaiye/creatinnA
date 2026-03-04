@@ -4,6 +4,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ScrollMorphHero from "@/components/ui/scroll-morph-hero";
 import VisualGrid from '@/components/ui/visual-grid';
+import Image from 'next/image';
 import { sqlite } from '@/lib/prisma';
 
 export default function Home() {
@@ -543,10 +544,11 @@ export default function Home() {
               transition={{ duration: 0.5 }}
               className="md:col-span-7 group relative rounded-3xl overflow-hidden min-h-[380px]"
             >
-              <img
+              <Image
                 src="/3U4A1815.jpg"
                 alt="CreatINN Academy campus"
-                className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                fill
+                className="absolute inset-0 object-cover transition-transform duration-700 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
               <div className="relative z-10 flex flex-col justify-end h-full p-8 lg:p-10">
@@ -730,10 +732,11 @@ export default function Home() {
                   <div className="relative z-10 flex flex-col h-full">
                     {/* Image section */}
                     <div className="relative h-52 overflow-hidden">
-                      <img
+                      <Image
                         src={program.thumbnail || '/3U4A1815.jpg'}
                         alt={program.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                        fill
+                        className="object-cover transition-transform duration-700 group-hover:scale-110"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0c0c0c] via-[#0c0c0c]/40 to-transparent" />
 
@@ -920,7 +923,7 @@ export default function Home() {
                   <div className="relative z-10 p-8 lg:p-10">
                     {/* Mockup video thumbnail */}
                     <div className="relative rounded-2xl overflow-hidden mb-6 aspect-video bg-gradient-to-br from-purple-950/50 to-black">
-                      <img src="/3U4A1894.jpg" alt="The Thinkinn" className="w-full h-full object-cover opacity-60" />
+                      <Image src="/3U4A1894.jpg" alt="The Thinkinn" fill className="object-cover opacity-60" />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="px-4 py-2 rounded-full bg-white/6 backdrop-blur-sm border border-white/10 text-white font-semibold text-sm">
                           Coming soon

@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import ReactPlayer from 'react-player';
 const RP: any = ReactPlayer;
 import { motion, AnimatePresence } from 'framer-motion';
@@ -174,7 +175,7 @@ export default function CoursePlayerClient({
         <div className="relative h-[420px] md:h-[480px] overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#060606]/70 to-[#060606] z-10" />
           {course.thumbnail ? (
-            <img src={course.thumbnail} alt="" className="w-full h-full object-cover opacity-30" />
+            <Image src={course.thumbnail} alt="" fill className="object-cover opacity-30" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-purple-950/40 via-[#0a0a0a] to-[#060606]" />
           )}
@@ -290,11 +291,11 @@ export default function CoursePlayerClient({
             <div className="lg:col-span-1 min-w-0">
               <div className="sticky top-8 bg-white/[0.03] border border-white/[0.06] rounded-2xl overflow-hidden min-w-0">
                   {course.thumbnail && (
-                  <div className="relative h-44">
-                    <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
-                  </div>
-                )}
+                    <div className="relative h-44">
+                      <Image src={course.thumbnail} alt="" fill className="object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+                    </div>
+                  )}
                 <div className="p-6 space-y-5">
                   <div>
                     <p className="text-3xl font-bold">

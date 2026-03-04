@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from 'next/image';
 import { motion } from "framer-motion";
 
 interface VisualGridProps {
@@ -18,7 +19,9 @@ export default function VisualGrid({ images }: VisualGridProps) {
           viewport={{ once: true }}
           className="rounded-lg overflow-hidden bg-gray-800/20"
         >
-          <img src={img.src} alt={img.alt || `visual-${i}`} className="w-full h-24 object-cover" />
+          <div className="relative w-full h-24">
+            <Image src={img.src} alt={img.alt || `visual-${i}`} fill className="object-cover" />
+          </div>
           {img.caption && (
             <div className="p-2 text-xs text-white/70">{img.caption}</div>
           )}

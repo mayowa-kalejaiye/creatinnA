@@ -98,7 +98,7 @@ export async function POST(req: Request) {
 
       // Idempotent update: only update if not already completed
       if (String((existing as any).status).toLowerCase() !== 'completed') {
-        const providerId = data.id ?? data.transaction ?? null;
+        const providerId = data.id ?? data.transaction ?? undefined;
         const updated = tryUpdatePaymentStatus(reference, 'completed', providerId);
         if (!updated) console.warn('Failed to update payment status for', reference);
       }

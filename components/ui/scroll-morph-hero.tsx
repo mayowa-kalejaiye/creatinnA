@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Image from 'next/image';
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -23,12 +24,7 @@ function FloatingImage({ src, className, delay }: { src: string; className: stri
       className={`absolute ${className} z-0 pointer-events-none`}
     >
       <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
-        <img
-          src={src}
-          alt=""
-          className="w-full h-full object-cover"
-          loading="eager"
-        />
+          <Image src={src} alt="" fill className="object-cover" priority />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/10" />
         {/* Subtle border glow */}
         <div className="absolute inset-0 rounded-2xl ring-1 ring-white/10" />
@@ -82,12 +78,7 @@ export default function IntroAnimation() {
     <section className="relative w-full h-screen bg-[#060606] overflow-hidden">
       {/* Background image */}
       <div className="absolute inset-0">
-        <img
-          src="/3U4A1815.jpg"
-          alt=""
-          className="w-full h-full object-cover"
-          loading="eager"
-        />
+        <Image src="/3U4A1815.jpg" alt="" fill className="object-cover" priority />
         {/* Dark overlay for text readability */}
         <div className="absolute inset-0 bg-black/60" />
         {/* Gradient overlays for depth */}

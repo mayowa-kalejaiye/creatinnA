@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /* -- Icons -- */
@@ -632,7 +633,7 @@ export default function CourseEditorClient({ course }: { course: Course }) {
                   <label className="block text-xs text-white/30 mb-1.5">Thumbnail</label>
                   <div className="flex items-center gap-4">
                     {courseData.thumbnail && (
-                      <img src={courseData.thumbnail} alt="" className="w-24 h-16 object-cover rounded-lg border border-white/[0.06]" />
+                      <Image src={courseData.thumbnail} alt="" width={96} height={64} className="rounded-lg border border-white/[0.06] object-cover" />
                     )}
                     <div className="flex-1 space-y-2">
                       <input
