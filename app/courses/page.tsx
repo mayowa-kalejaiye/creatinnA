@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { sqlite } from "@/lib/prisma";
+import Header from '@/components/Header';
 import CoursesClient from "./CoursesClient";
 
 export default async function CoursesPage() {
@@ -19,23 +20,30 @@ export default async function CoursesPage() {
     category: string;
     _count: { enrollments: number; modules: number };
   };
-  // Add _count with default values for now
+  // Add _count with real module/enrollment counts
   const courses: Course[] = Array.isArray(coursesRaw)
-    ? (coursesRaw as any[]).map((c) => ({
-        ...c,
-        description: c.description ?? '',
-        thumbnail: c.thumbnail ?? null,
-        price: c.price ?? 0,
-        duration: c.duration ?? '',
-        level: c.level ?? '',
-        category: c.category ?? '',
-        _count: { enrollments: 0, modules: 0 },
-      }))
+    ? (coursesRaw as any[]).map((c) => {
+        const moduleCount = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM "Module" WHERE courseId = ?`).get(c.id) as any)?.cnt ?? 0;
+        const enrollmentCount = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM "Enrollment" WHERE courseId = ?`).get(c.id) as any)?.cnt ?? 0;
+        return {
+          ...c,
+          description: c.description ?? '',
+          thumbnail: c.thumbnail ?? null,
+          price: c.price ?? 0,
+          duration: c.duration ?? '',
+          level: c.level ?? '',
+          category: c.category ?? '',
+          _count: { enrollments: enrollmentCount, modules: moduleCount },
+        };
+      })
     : [];
 
   return (
-    <div>
-      <CoursesClient courses={courses} userEnrollments={[]} isLoggedIn={false} />
+    <div className="min-h-screen">
+      <Header />
+      <div>
+        <CoursesClient courses={courses} userEnrollments={[]} isLoggedIn={false} />
+      </div>
     </div>
   );
 }

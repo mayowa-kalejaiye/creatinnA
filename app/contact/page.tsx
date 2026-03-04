@@ -22,7 +22,6 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen">
       <Header />
-      
       <main className="pt-32 pb-20">
         {/* Hero */}
         <section className="px-6 mb-12">

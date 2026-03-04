@@ -3,6 +3,15 @@ import { sqlite } from '@/lib/prisma';
 import Paystack from 'paystack-node';
 import crypto from 'crypto';
 
+type PaymentData = {
+  reference?: string
+  tx_ref?: string
+  transaction_reference?: string
+  metadata?: Record<string, unknown>
+  id?: string
+  transaction?: string
+}
+
 const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
 const paystack = paystackSecret ? new Paystack(paystackSecret) : null;
 
@@ -46,84 +55,101 @@ function tryInsertEnrollment(enrollmentId: string, userId: string, courseId: str
 
 export async function POST(req: Request) {
   try {
-    // Verify Paystack webhook signature if configured
-    let event: any = null;
+    // If webhook secret is not configured, reject - payments are disabled
+    if (!paystackSecret) {
+      return NextResponse.json({ error: 'payments disabled' }, { status: 410 });
+    }
 
-    if (paystackSecret) {
-      const buf = Buffer.from(await req.arrayBuffer());
-      const sig = (req.headers.get('x-paystack-signature') || '').toString();
-      const hash = crypto.createHmac('sha512', paystackSecret).update(buf).digest('hex');
-      if (!sig || hash !== sig) {
-        console.error('Paystack webhook signature verification failed', { expected: hash, got: sig });
-        return NextResponse.json({ error: 'invalid signature' }, { status: 400 });
-      }
-      try {
-        event = JSON.parse(buf.toString());
-      } catch (e) {
-        console.error('Failed to parse webhook payload', e);
-        return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
-      }
-    } else {
-      // Fallback: parse JSON body (for manual testing)
-      event = await req.json();
+    // Verify Paystack webhook signature
+    let event: any = null;
+    const buf = Buffer.from(await req.arrayBuffer());
+    const sig = (req.headers.get('x-paystack-signature') || '').toString();
+    const hash = crypto.createHmac('sha512', paystackSecret).update(buf).digest('hex');
+    if (!sig || hash !== sig) {
+      console.warn('Paystack webhook signature verification failed');
+      return NextResponse.json({ error: 'invalid signature' }, { status: 400 });
+    }
+    try {
+      event = JSON.parse(buf.toString());
+    } catch (e) {
+      console.warn('Failed to parse webhook payload');
+      return NextResponse.json({ error: 'invalid payload' }, { status: 400 });
     }
 
     const eventType = event?.event || event?.type || '';
 
     // Normalize handler for Paystack charge success
     if (eventType === 'charge.success' || eventType === 'charge.success' /* explicit */) {
-      const data = event.data || {};
+      const data = (event.data || {}) as PaymentData;
       const reference = data.reference || data.tx_ref || data.transaction_reference;
-      const metadata = data.metadata || {};
+      const metadata = (data.metadata || {}) as Record<string, unknown>;
 
       if (!reference) {
-        console.error('Webhook missing reference id', { data });
+        console.warn('Webhook missing reference id');
         return NextResponse.json({ error: 'missing reference' }, { status: 400 });
       }
 
+      // Require an existing payment row - do not auto-create payments from webhooks
+      const existing = trySelectPayment(reference) as Record<string, unknown> | null;
+      if (!existing) {
+        console.warn('Payment row not found for reference; ignoring webhook', reference);
+        return NextResponse.json({ ok: true });
+      }
+
       // Idempotent update: only update if not already completed
-      const existing = trySelectPayment(reference);
-      if (existing && String((existing as any).status).toLowerCase() === 'completed') {
-        console.log('Payment already completed, ignoring webhook', reference);
-      } else {
+      if (String((existing as any).status).toLowerCase() !== 'completed') {
         const providerId = data.id ?? data.transaction ?? null;
         const updated = tryUpdatePaymentStatus(reference, 'completed', providerId);
         if (!updated) console.warn('Failed to update payment status for', reference);
       }
 
-      // Enrollment logic
-      const userId = metadata.userId || metadata.user_id || metadata.user || null;
-      const courseId = metadata.courseId || metadata.course_id || metadata.course || null;
-      const program = metadata.program || (existing && (existing as any).program) || '';
+      // Enrollment logic - only proceed if metadata and payment row provide required info
+      const getFirst = (obj: Record<string, unknown> | null, ...keys: string[]) => {
+        if (!obj) return null
+        for (const k of keys) {
+          const v = obj[k]
+          if (v !== undefined && v !== null) return String(v)
+        }
+        return null
+      }
+
+      const userId = getFirst(metadata, 'userId', 'user_id', 'user') || getFirst(existing, 'userId', 'user_id', 'user');
+      const courseId = getFirst(metadata, 'courseId', 'course_id', 'course') || getFirst(existing, 'courseId', 'course_id', 'course');
+      const program = (metadata['program'] as string) || (existing && (existing['program'] as string)) || '';
       const isSelective = typeof program === 'string' && !program.toLowerCase().includes('online');
       const enrollmentStatus = isSelective ? 'pending' : 'active';
 
-      if (userId && courseId) {
-        // check if enrollment exists (case-insensitive table names)
-        let existingEnrollment = null;
-        try { existingEnrollment = sqlite.prepare('SELECT id FROM "Enrollment" WHERE userId = ? AND courseId = ?').get(userId, courseId); } catch (e) { try { existingEnrollment = sqlite.prepare('SELECT id FROM "enrollments" WHERE userId = ? AND courseId = ?').get(userId, courseId); } catch (e) {} }
+      if (!userId || !courseId) {
+        console.warn('Missing userId or courseId in webhook metadata or payment row; skipping enrollment');
+        return NextResponse.json({ ok: true });
+      }
 
-        if (!existingEnrollment) {
-          const enrollmentId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
-          const now = new Date().toISOString();
-          const ok = tryInsertEnrollment(enrollmentId, userId, courseId, enrollmentStatus, now);
-          if (ok) console.log(`Enrollment created: ${enrollmentId} for user ${userId}, status: ${enrollmentStatus}`);
-          else {
-            console.error('Failed to create enrollment for', userId, courseId);
-            if (isSelective) console.error(`ADMIN ACTION REQUIRED: Review enrollment for user ${userId}, course ${courseId} - payment completed but enrollment failed`);
-          }
-        } else {
-          console.log(`Enrollment already exists for user ${userId}, course ${courseId}`);
+      // check if enrollment exists (case-insensitive table names)
+      let existingEnrollment = null;
+      try { existingEnrollment = sqlite.prepare('SELECT id FROM "Enrollment" WHERE userId = ? AND courseId = ?').get(userId, courseId); } catch (e) { try { existingEnrollment = sqlite.prepare('SELECT id FROM "enrollments" WHERE userId = ? AND courseId = ?').get(userId, courseId); } catch (e) {} }
+
+      if (!existingEnrollment) {
+        const enrollmentId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
+        const now = new Date().toISOString();
+        const ok = tryInsertEnrollment(enrollmentId, userId, courseId, enrollmentStatus, now);
+        if (!ok) {
+          console.error('Failed to create enrollment for', userId, courseId);
+          if (isSelective) console.error(`ADMIN ACTION REQUIRED: Review enrollment for user ${userId}, course ${courseId} - payment completed but enrollment failed`);
         }
-      } else {
-        console.warn('Missing userId or courseId in webhook metadata; skipping enrollment');
       }
 
     } else if (eventType === 'manual' || event?.type === 'manual') {
-      // manual test payload handling
+      // Allow manual test payloads only when authenticated via secret - but in production this block will rarely be used.
       const paymentId = event.paymentId || event.payment_id;
       const providerStatus = (event.providerStatus || event.provider_status || 'success').toString();
       if (!paymentId) return NextResponse.json({ error: 'missing paymentId' }, { status: 400 });
+
+      // Require existing payment row
+      const paymentRow = trySelectPayment(paymentId) as { userId?: string; courseId?: string; program?: string } | null;
+      if (!paymentRow) {
+        console.warn('Manual webhook: payment row not found', paymentId);
+        return NextResponse.json({ ok: true });
+      }
 
       // Update payment status (idempotent)
       tryUpdatePaymentStatus(paymentId, providerStatus);
@@ -131,7 +157,6 @@ export async function POST(req: Request) {
       // attempt enrollment when provider indicates success/completed
       if (['success', 'completed', 'paid', 'ok'].includes(providerStatus.toLowerCase())) {
         try {
-          const paymentRow = trySelectPayment(paymentId) as { userId?: string; courseId?: string; program?: string } | null;
           if (paymentRow && paymentRow.userId && paymentRow.courseId) {
             const enrollmentId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
             const now = new Date().toISOString();
@@ -144,7 +169,7 @@ export async function POST(req: Request) {
         }
       }
     } else {
-      console.log('Unhandled webhook event type:', eventType);
+      console.warn('Unhandled webhook event type');
     }
 
     return NextResponse.json({ ok: true });

@@ -45,22 +45,8 @@ function genId() {
       console.log('Created admin user:', adminEmail, '(password:', adminPassword + ')');
     }
 
-    // Seed sample course
-    const hasCourseTable = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='Course'").get();
-    if (!hasCourseTable) {
-      console.warn('Course table not found; skipping sample course creation.');
-    } else {
-      const slug = 'intro-video-editing';
-      const existingCourse = db.prepare('SELECT * FROM "Course" WHERE slug = ?').get(slug);
-      if (existingCourse) {
-        console.log('Sample course already exists:', slug);
-      } else {
-        const courseId = genId();
-        db.prepare('INSERT INTO "Course" (id, title, slug, description, thumbnail, price, duration, level, isPublished, category, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
-          .run(courseId, 'Intro to Video Editing', slug, 'Short intensive on video editing fundamentals', 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?w=800&q=80', 30000, '2 weeks', 'Beginner', 1, 'Video', now, now);
-        console.log('Created sample course:', slug);
-      }
-    }
+    // Core programs are now seeded automatically by the admin page and homepage.
+    // No sample course is created here.
 
     console.log('Seeding complete.');
   } catch (err) {

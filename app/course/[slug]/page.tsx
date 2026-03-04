@@ -1,13 +1,11 @@
-import { authOptions } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 import { sqlite } from '@/lib/prisma';
 import { redirect } from 'next/navigation';
 import CoursePlayerClient from './CoursePlayerClient';
 import { getCourseBySlug } from '@/lib/db-adapter';
-import { getServerSession } from 'next-auth';
-
 export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session?.user) {
     redirect(`/login?redirect=/course/${slug}`);

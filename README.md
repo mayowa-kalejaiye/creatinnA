@@ -116,9 +116,11 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 1. Sign up normally through the website
 2. Open Prisma Studio:
+
 ```bash
 npx prisma studio
 ```
+
 3. Navigate to the `User` table
 4. Find your user and change `role` from `STUDENT` to `ADMIN`
 5. Refresh the page and you'll have admin access

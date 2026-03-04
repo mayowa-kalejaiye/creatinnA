@@ -17,12 +17,13 @@ export async function getUserById(id: string) {
   return stmt.get(id) ?? null
 }
 
-export async function createUser(data: { name: string; email: string; password: string; phone?: string }) {
+export async function createUser(data: { name: string; email: string; password: string; phone?: string; role?: string }) {
   const id = genId()
   const now = new Date().toISOString()
+  const role = data.role ?? 'STUDENT'
   sqlite.prepare(
-    `INSERT INTO "users"(id, name, email, password, phone, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, data.name, data.email, data.password, data.phone ?? null, now, now)
+    `INSERT INTO "users"(id, name, email, password, phone, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, data.name, data.email, data.password, data.phone ?? null, role, now, now)
   return getUserById(id)
 }
 
@@ -52,6 +53,10 @@ export async function getCourseBySlug(slug: string) {
     const modules: Module[] = Array.isArray(modulesRaw) ? modulesRaw as Module[] : [];
 
     for (const mod of modules) {
+      // Map position → order for client compatibility
+      if (mod.position !== undefined && mod.order === undefined) {
+        (mod as any).order = mod.position;
+      }
       const lessonsRaw = lessonsStmt.all(mod.id) || [];
       const lessons: Lesson[] = Array.isArray(lessonsRaw) ? lessonsRaw as Lesson[] : [];
       mod.lessons = lessons;

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sqlite } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
-import { getServerSession } from "next-auth";
+import { auth } from "@/lib/auth";
 
 export async function POST(
   req: NextRequest,
@@ -9,7 +8,7 @@ export async function POST(
 ) {
   const { courseId } = await params;
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

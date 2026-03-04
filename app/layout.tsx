@@ -1,19 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
-import SmoothScroll from "@/components/SmoothScroll";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-jakarta",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "CreatINN Academy | Physical Creative Institution in Lagos",
@@ -26,11 +12,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jakarta.variable}`}>
-      <body className="antialiased bg-black text-white">
-        <SmoothScroll>
-          {children}
-        </SmoothScroll>
+    <html lang="en">
+      <body className="antialiased bg-black text-white font-sans">
+        {children}
       </body>
     </html>
   );

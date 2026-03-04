@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sqlite } from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth';
 
 export async function PUT(
   req: NextRequest,
@@ -9,14 +8,19 @@ export async function PUT(
 ) {
   const { courseId } = await params;
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const data = await req.json();
-    const { title, description, price, duration, level, category, thumbnail, isPublished } = data;
+    const { title, price, duration, level, category, thumbnail, isPublished, meta } = data;
+    let { description } = data;
+
+    // If meta provided, store plain description (not JSON-wrapped) — meta fields
+    // are informational and the description should remain human-readable
+    // (The front-end can send meta but we just keep the plain description.)
 
     // Build dynamic SET clause
     const assignments: string[] = [];
@@ -52,7 +56,7 @@ export async function PUT(
     }
     if (isPublished !== undefined) {
       assignments.push('"isPublished" = ?');
-      values.push(isPublished ? 1 : 0);
+      values.push((isPublished === true || isPublished === 1) ? 1 : 0);
     }
 
     if (assignments.length === 0) {
@@ -68,6 +72,12 @@ export async function PUT(
 
     const sql = `UPDATE "Course" SET ${assignments.join(', ')} WHERE id = ?`;
     sqlite.prepare(sql).run(...values);
+
+    // Sync to lowercase courses table
+    try {
+      const sqlLower = `UPDATE courses SET ${assignments.join(', ')} WHERE id = ?`;
+      sqlite.prepare(sqlLower).run(...values);
+    } catch (e) { /* ignore if table doesn't exist */ }
 
     const updated = sqlite
       .prepare('SELECT * FROM "Course" WHERE id = ?')
@@ -86,7 +96,7 @@ export async function DELETE(
 ) {
   const { courseId } = await params;
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

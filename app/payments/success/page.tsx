@@ -1,11 +1,15 @@
 "use client";
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
 export default function SuccessPage() {
-  const search = useSearchParams();
-  const paymentId = search.get('paymentId');
+  const [paymentId, setPaymentId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    setPaymentId(params.get('paymentId'));
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">

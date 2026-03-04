@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sqlite } from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth';
 
 export async function POST(
   req: NextRequest,
@@ -9,7 +8,7 @@ export async function POST(
 ) {
   const { courseId } = await params;
   try {
-    const session = await getServerSession(authOptions);
+      const session = await auth();
 
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -93,6 +92,7 @@ export async function POST(
     moduleRow.lessons = [];
     return NextResponse.json(moduleRow, { status: 201 });
   } catch (err) {
-    return NextResponse.json({ error: 'Failed to create module' }, { status: 500 });
+    console.error('Create module error:', err);
+    return NextResponse.json({ error: String(err) }, { status: 500 });
   }
 }

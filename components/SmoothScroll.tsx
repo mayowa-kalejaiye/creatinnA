@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrollSmoother } from 'gsap/ScrollSmoother';
@@ -10,24 +11,33 @@ if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger, ScrollSmoother);
 }
 
+// Routes that use fixed-position UI (sidebars, panels) — smooth scroll breaks them
+const SKIP_SMOOTH = ['/admin', '/dashboard', '/course/', '/login', '/signup', '/payments'];
+
 export default function SmoothScroll({ children }: { children: React.ReactNode }) {
   const smootherRef = useRef<ScrollSmoother | null>(null);
+  const pathname = usePathname();
+  const skip = SKIP_SMOOTH.some((p) => pathname?.startsWith(p));
 
   useEffect(() => {
-    // Create the smooth scroller
+    if (skip) return;
+
     smootherRef.current = ScrollSmoother.create({
-      smooth: 2, // seconds it takes to "catch up" to native scroll position
-      effects: true, // look for data-speed and data-lag attributes on elements and animate accordingly
-      smoothTouch: 0.1, // smooth scrolling on touch devices (0-1, lower is smoother)
+      smooth: 2,
+      effects: true,
+      smoothTouch: 0.1,
     });
 
-    // Cleanup on unmount
     return () => {
       if (smootherRef.current) {
         smootherRef.current.kill();
       }
     };
-  }, []);
+  }, [skip]);
+
+  if (skip) {
+    return <>{children}</>;
+  }
 
   return (
     <div id="smooth-wrapper">

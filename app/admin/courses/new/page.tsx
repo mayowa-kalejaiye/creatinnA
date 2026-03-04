@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function NewCoursePage() {
+  // Auth is enforced at the edge by middleware.ts — only ADMIN users reach this page.
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -16,6 +17,11 @@ export default function NewCoursePage() {
     category: 'Video Editing'
   });
 
+  const [thumbnailUrl, setThumbnailUrl] = useState('');
+  const [summary, setSummary] = useState('');
+  const [prerequisites, setPrerequisites] = useState('');
+  const [outcomes, setOutcomes] = useState('');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -24,7 +30,11 @@ export default function NewCoursePage() {
       const res = await fetch('/api/courses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          thumbnail: thumbnailUrl,
+          meta: { summary, prerequisites, outcomes }
+        })
       });
 
       if (res.ok) {
@@ -73,6 +83,59 @@ export default function NewCoursePage() {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Short Summary</label>
+            <textarea
+              rows={2}
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-gold resize-none"
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+            />
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">Prerequisites</label>
+              <textarea
+                rows={2}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-gold resize-none"
+                value={prerequisites}
+                onChange={(e) => setPrerequisites(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-2">Learning Outcomes</label>
+              <textarea
+                rows={2}
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-gold resize-none"
+                value={outcomes}
+                onChange={(e) => setOutcomes(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">Thumbnail</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = async () => {
+                  const res = await fetch('/api/uploads', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filename: f.name, data: reader.result }) });
+                  if (res.ok) {
+                    const j = await res.json();
+                    setThumbnailUrl(j.url);
+                  }
+                };
+                reader.readAsDataURL(f);
+              }}
+            />
+            {thumbnailUrl && <img src={thumbnailUrl} className="mt-3 w-48 h-28 object-cover rounded" alt="thumb" />}
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">

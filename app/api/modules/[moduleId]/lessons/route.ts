@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sqlite } from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth';
 
 export async function POST(
   req: NextRequest,
@@ -9,13 +8,13 @@ export async function POST(
 ) {
   const { moduleId } = await params;
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
 
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { title, description, videoUrl, duration, order, isFree, resources } = await req.json();
+    const { title, description, content, videoUrl, duration, order, isFree, resources } = await req.json();
     const id = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
     const now = new Date().toISOString();
 
@@ -51,6 +50,7 @@ export async function POST(
       moduleId: moduleId,
       title,
       description: description ?? null,
+      content: content ?? null,
       videoUrl: videoUrl ?? null,
       duration: duration ?? null,
       order: Number(order ?? 0),

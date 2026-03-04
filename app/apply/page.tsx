@@ -1,19 +1,50 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
+// Map program titles/slugs from URL to form value
+const programMap: Record<string, string> = {
+  'intensive': 'intensive',
+  '2-week video editing intensive': 'intensive',
+  '2-week-video-editing-intensive': 'intensive',
+  'mastery': 'mastery',
+  '1-on-1 mastery track': 'mastery',
+  '1-on-1-mastery-track': 'mastery',
+  'online': 'online',
+  'online video editing': 'online',
+  'online-video-editing': 'online',
+  'online video editing course': 'online',
+};
+
 export default function ApplyPage() {
+  // Read query params on the client to avoid server-side hook usage
   const [status, setStatus] = useState<string | null>(null);
   const [form, setForm] = useState({
-    userId: "",
+    name: "",
+    email: "",
+    phone: "",
     program: "intensive",
     experience: "",
     motivation: "",
     commitment: false,
   });
+
+  // Pre-select program from URL query param using window.location
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get('program');
+    if (p) {
+      const key = p.toLowerCase().trim();
+      const mapped = programMap[key];
+      if (mapped) {
+        setForm((prev) => ({ ...prev, program: mapped }));
+      }
+    }
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,9 +60,11 @@ export default function ApplyPage() {
         data = await res.json();
       } catch {}
       if (res.ok) {
-        setStatus("submitted: " + (data?.id ?? "ok"));
+        setStatus("submitted");
         setForm({
-          userId: "",
+          name: "",
+          email: "",
+          phone: "",
           program: "intensive",
           experience: "",
           motivation: "",
@@ -116,18 +149,100 @@ export default function ApplyPage() {
               className="glass rounded-3xl p-8 md:p-12"
             >
               <form onSubmit={submit} className="space-y-6">
-                {/* User ID */}
+                {status === 'submitted' ? (
+                  <div className="text-center py-8 space-y-6">
+                    <div className="w-16 h-16 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center mx-auto text-3xl font-bold">✓</div>
+                    <div>
+                      <h3 className="text-2xl font-display font-bold mb-2">Application Received</h3>
+                      <p className="text-white/60 max-w-md mx-auto">
+                        Thank you for applying to CreatINN Academy. Your application is now under review.
+                      </p>
+                    </div>
+
+                    <div className="glass rounded-xl p-6 text-left space-y-4 max-w-md mx-auto">
+                      <h4 className="font-display font-bold text-sm uppercase tracking-wider text-accent-gold">What happens next</h4>
+                      <div className="space-y-3 text-sm text-white/70">
+                        <div className="flex items-start gap-3">
+                          <span className="text-accent-gold font-bold mt-0.5">1.</span>
+                          <span>Our team will review your application within <strong className="text-white">3–5 business days</strong>.</span>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <span className="text-accent-gold font-bold mt-0.5">2.</span>
+                          <span>Check the <strong className="text-white">email you provided</strong> — that&apos;s where we&apos;ll send your admission decision.</span>
+                        </div>
+                        <div className="flex items-start gap-3">
+                          <span className="text-accent-gold font-bold mt-0.5">3.</span>
+                          <span>If shortlisted, you may be invited for a <strong className="text-white">brief conversation</strong> before final acceptance.</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="glass rounded-xl p-6 text-left max-w-md mx-auto">
+                      <h4 className="font-display font-bold text-sm uppercase tracking-wider text-white/50 mb-3">While you wait</h4>
+                      <p className="text-sm text-white/60 mb-4">
+                        Get a feel for how we think. Watch <strong className="text-white">The Thinkinn</strong> — our weekly series on monetization, AI, and creative business thinking.
+                      </p>
+                      <a
+                        href="/thinkinn"
+                        className="inline-block px-5 py-2.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm font-semibold transition-all"
+                      >
+                        Explore The Thinkinn →
+                      </a>
+                    </div>
+
+                    <p className="text-xs text-white/30 max-w-sm mx-auto">
+                      Didn&apos;t receive anything after 5 business days? Reach out via our <a href="/contact" className="underline hover:text-white/50">contact page</a>.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                {/* Full Name */}
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    User ID (existing user)
+                    Full Name <span className="text-red-400">*</span>
                   </label>
                   <input
                     type="text"
+                    required
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-gold transition-colors"
-                    value={form.userId}
+                    value={form.name}
                     onChange={(e) =>
-                      setForm({ ...form, userId: e.target.value })
+                      setForm({ ...form, name: e.target.value })
                     }
+                    placeholder="Your full name"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Email Address <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-gold transition-colors"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                    placeholder="you@example.com"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-accent-gold transition-colors"
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value })
+                    }
+                    placeholder="+234 ..."
                   />
                 </div>
 
@@ -217,16 +332,19 @@ export default function ApplyPage() {
                 <div className="pt-6">
                   <button
                     type="submit"
-                    className="w-full px-8 py-4 bg-white text-black font-bold rounded-lg hover:bg-accent-gold transition-all duration-300 premium-shadow"
+                    disabled={status === 'sending'}
+                    className="w-full px-8 py-4 bg-white text-black font-bold rounded-lg hover:bg-accent-gold transition-all duration-300 premium-shadow disabled:opacity-50"
                   >
-                    Submit Application
+                    {status === 'sending' ? 'Submitting…' : 'Submit Application'}
                   </button>
                   <p className="text-xs text-white/40 text-center mt-4">
                     We&apos;ll review your application within 3-5 business days
                   </p>
                 </div>
+                  </>
+                )}
               </form>
-              {status && <p className="text-center text-white/70 mt-4">{status}</p>}
+              {status && status.startsWith('error') && <p className="text-center text-red-400 mt-4">{status}</p>}
             </motion.div>
           </div>
         </section>

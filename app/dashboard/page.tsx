@@ -11,11 +11,6 @@ export default async function DashboardPage() {
     redirect('/login');
     return null;
   }
-  // Redirect admin to admin dashboard
-  if (user.role === 'ADMIN') {
-    redirect('/admin');
-    return null;
-  }
 
   // User enrollments with course titles
   const enrollmentsRaw = sqlite
@@ -40,6 +35,27 @@ export default async function DashboardPage() {
     }
   }));
 
+  // Compute accurate progress percentages for each enrollment from the Progress table
+  for (const en of enrollments) {
+    try {
+      const totalRow = sqlite.prepare(
+        `SELECT COUNT(l.id) as cnt FROM "Lesson" l JOIN "Module" m ON m.id = l.moduleId WHERE m.courseId = ?`
+      ).get(en.courseId) as any;
+      const total = totalRow?.cnt ?? 0;
+      if (total === 0) {
+        en.progress = 0;
+        continue;
+      }
+      const completedRow = sqlite.prepare(
+        `SELECT COUNT(p.id) as cnt FROM "Progress" p JOIN "Lesson" l ON l.id = p.lessonId JOIN "Module" m ON m.id = l.moduleId WHERE p.userId = ? AND m.courseId = ? AND p.completed = 1`
+      ).get(user.id, en.courseId) as any;
+      const completed = completedRow?.cnt ?? 0;
+      en.progress = Math.round((completed / total) * 100);
+    } catch (e) {
+      en.progress = en.progress ?? 0;
+    }
+  }
+
   // User progress
   const progress = sqlite
     .prepare('SELECT * FROM "Progress" WHERE userId = ?')
@@ -50,7 +66,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
-      user={{ name: user.name ?? '', email: user.email ?? '' }}
+      user={{ name: user.name ?? '', email: user.email ?? '', role: user.role ?? 'STUDENT' }}
       enrollments={enrollments}
       certificates={certificates}
     />

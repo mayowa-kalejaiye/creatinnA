@@ -1,9 +1,11 @@
 import NextAuth, { AuthOptions } from "next-auth"
+import type { Session } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { sqlite } from "@/lib/prisma"
 import { getUserByEmail, getUserById } from "@/lib/db-adapter"
 import bcrypt from "bcryptjs"
 import { getServerSession } from "next-auth"
+import { headers, cookies } from 'next/headers'
 
 export const authConfig: AuthOptions = {
   session: {
@@ -38,6 +40,10 @@ export const authConfig: AuthOptions = {
           console.log("Password does not match");
           return null;
         }
+        if ((user as any).role === 'REVOKED') {
+          console.log("User access has been revoked:", (user as any).email);
+          return null;
+        }
         console.log("Login successful for user:", (user as any).email);
         return {
           id: (user as any).id,
@@ -70,8 +76,26 @@ const handler = NextAuth(authConfig);
 export const handlers = handler;
 export const nextAuth = handler;
 
-export async function auth() {
-  return getServerSession(authConfig as any)
+export async function auth(): Promise<Session | null> {
+  try {
+    const h = await headers()
+    const c = await cookies()
+
+    const req = {
+      headers: Object.fromEntries(h ? Array.from(h.entries()) : []),
+      cookies: Object.fromEntries(typeof c.getAll === 'function' ? c.getAll().map((ck: any) => [ck.name, ck.value]) : [])
+    }
+
+    const res = {
+      getHeader() {},
+      setCookie() {},
+      setHeader() {}
+    }
+
+    return (await getServerSession(req as any, res as any, authConfig as any)) as Session | null
+  } catch (e) {
+    return (await getServerSession(authConfig as any)) as Session | null
+  }
 }
 
 export async function getSessionUserByEmail(email: string) {

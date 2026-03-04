@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { sqlite } from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
-import { getServerSession } from 'next-auth';
+import { auth } from '@/lib/auth';
 import Paystack from 'paystack-node';
 
 // Environment-driven Paystack instance
@@ -11,7 +10,7 @@ const paystack = paystackSecret ? new Paystack(paystackSecret) : null;
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     const body = await req.json();
     const program = body.program ?? 'unknown';
 
