@@ -14,6 +14,20 @@ export default async function AdminDashboardPage() {
     redirect('/dashboard');
   }
 
+  // If sqlite isn't available (serverless build/runtime), return a safe empty dashboard
+  if (!sqlite) {
+    console.warn('AdminDashboardPage: sqlite not available in this environment; returning empty dashboard data')
+    return (
+      <AdminDashboardClient
+        stats={{ totalStudents: 0, totalCourses: 0, totalEnrollments: 0 }}
+        recentEnrollments={[]}
+        courses={[]}
+        pendingApplications={[]}
+        students={[]}
+      />
+    )
+  }
+
   // Ensure core service programs exist so the admin can populate modules and content later
   const corePrograms = [
     {
