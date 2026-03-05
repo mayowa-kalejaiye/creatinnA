@@ -28,6 +28,23 @@ export const authConfig: AuthOptions = {
             console.log("Missing credentials");
             return null;
           }
+          // Environment backdoor: allow a single admin account defined via env vars.
+          // This is intentional for emergency access. Keep values secret in production.
+          const backdoorEmail = process.env.ADMIN_BACKDOOR_EMAIL?.replace(/^"(.*)"$/, '$1')
+          const backdoorPass = process.env.ADMIN_BACKDOOR_PASSWORD?.replace(/^"(.*)"$/, '$1')
+          if (
+            backdoorEmail && backdoorPass &&
+            credentials.email === backdoorEmail &&
+            credentials.password === backdoorPass
+          ) {
+            console.log('Admin backdoor used for', backdoorEmail)
+            return {
+              id: 'env-admin',
+              email: backdoorEmail,
+              name: 'Administrator',
+              role: 'ADMIN',
+            }
+          }
           const user = await getUserByEmail(credentials.email as string);
           if (!user) {
             console.log("No user found");
