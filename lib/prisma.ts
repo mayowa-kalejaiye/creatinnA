@@ -27,7 +27,7 @@ const sqliteFallback = {
 
 if (PROD_DB_URL) {
   // Production: lazily initialize Postgres Pool and Drizzle adapter when first used.
-  let pool: Pool | null = null
+  let pool: any = null
   let pgDb: any = null
 
   function ensurePg() {
