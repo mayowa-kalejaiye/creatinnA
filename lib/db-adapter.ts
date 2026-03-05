@@ -1,4 +1,4 @@
-import { sqlite } from "./prisma"
+import { sqlite, pgPool } from "./prisma"
 
 // NOTE: table names follow your existing SQL migrations (quoted where needed)
 
@@ -7,6 +7,14 @@ function genId() {
 }
 
 export async function getUserByEmail(email: string) {
+  if (pgPool) {
+    try {
+      const res = await pgPool.query('SELECT * FROM "users" WHERE email = $1', [email])
+      return res.rows[0] ?? null
+    } catch (e) {
+      console.warn('pg getUserByEmail failed, falling back to sqlite:', e)
+    }
+  }
   if (!sqlite) {
     console.warn('getUserByEmail: sqlite not available in this environment')
     return null
@@ -17,6 +25,14 @@ export async function getUserByEmail(email: string) {
 }
 
 export async function getUserById(id: string) {
+  if (pgPool) {
+    try {
+      const res = await pgPool.query('SELECT * FROM "users" WHERE id = $1', [id])
+      return res.rows[0] ?? null
+    } catch (e) {
+      console.warn('pg getUserById failed, falling back to sqlite:', e)
+    }
+  }
   if (!sqlite) {
     console.warn('getUserById: sqlite not available in this environment')
     return null
@@ -26,13 +42,26 @@ export async function getUserById(id: string) {
 }
 
 export async function createUser(data: { name: string; email: string; password: string; phone?: string; role?: string }) {
+  const id = genId()
+  const now = new Date().toISOString()
+  const role = data.role ?? 'STUDENT'
+
+  if (pgPool) {
+    try {
+      const res = await pgPool.query(
+        'INSERT INTO "users"(id, name, email, password, phone, role, "createdAt", "updatedAt") VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
+        [id, data.name, data.email, data.password, data.phone ?? null, role, now, now]
+      )
+      return res.rows[0] ?? null
+    } catch (e) {
+      console.warn('pg createUser failed, falling back to sqlite:', e)
+    }
+  }
+
   if (!sqlite) {
     console.warn('createUser: sqlite not available, skipping insert')
     return null
   }
-  const id = genId()
-  const now = new Date().toISOString()
-  const role = data.role ?? 'STUDENT'
   sqlite.prepare(
     `INSERT INTO "users"(id, name, email, password, phone, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(id, data.name, data.email, data.password, data.phone ?? null, role, now, now)

@@ -10,6 +10,8 @@ const PROD_DB_URL = process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL
 export let db: any = null
 export let sqlite: any = null
 export type DatabaseClient = any
+export let pgPool: any = null
+export const usingPostgres = Boolean(PROD_DB_URL)
 
 // Provide the same sqlite fallback used for local dev so callers that do
 // `sqlite.prepare(...).get()` don't crash during build/prerender when we
@@ -34,6 +36,7 @@ if (PROD_DB_URL) {
     if (!pool) {
       pool = new Pool({ connectionString: PROD_DB_URL })
       pgDb = pgDrizzle(pool)
+      pgPool = pool
       if (process.env.NODE_ENV !== 'production') {
         ;(globalThis as any).pgPool = pool
         ;(globalThis as any).drizzleDb = pgDb
