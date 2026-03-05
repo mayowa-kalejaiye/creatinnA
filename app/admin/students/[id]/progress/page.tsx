@@ -18,7 +18,8 @@ export default async function StudentProgressPage(props: any) {
       </div>
     );
   }
-  const user = sqlite.prepare('SELECT id, name, email, createdAt FROM "users" WHERE id = ?').get(id) as any;
+  const db = sqlite
+  const user = db.prepare('SELECT id, name, email, createdAt FROM "users" WHERE id = ?').get(id) as any;
   if (!user) {
     return (
       <div className="min-h-screen bg-[#060606] text-white px-6 py-8">
@@ -29,7 +30,7 @@ export default async function StudentProgressPage(props: any) {
   }
 
   // fetch enrollments for this user
-  const enrollments = sqlite.prepare(
+  const enrollments = db.prepare(
     `SELECT e.id as enrollmentId, e.courseId, e.progress as progress, e.enrolledAt, c.title as courseTitle
      FROM "Enrollment" e
      LEFT JOIN "Course" c ON c.id = e.courseId
@@ -38,14 +39,14 @@ export default async function StudentProgressPage(props: any) {
 
   // For each course, compute lesson count and completed count
   const courseProgress = enrollments.map((en) => {
-    const totalLessonsRow = sqlite.prepare(
+    const totalLessonsRow = db.prepare(
       `SELECT COUNT(l.id) as cnt
        FROM "Lesson" l
        JOIN "Module" m ON m.id = l.moduleId
        WHERE m.courseId = ?`
     ).get(en.courseId) as any;
     const total = totalLessonsRow?.cnt ?? 0;
-    const completedRow = sqlite.prepare(
+    const completedRow = db.prepare(
       `SELECT COUNT(p.id) as cnt
        FROM "Progress" p
        JOIN "Lesson" l ON l.id = p.lessonId
@@ -56,7 +57,7 @@ export default async function StudentProgressPage(props: any) {
     const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
 
     // fetch lesson-level status
-    const lessons = sqlite.prepare(
+    const lessons = db.prepare(
       `SELECT l.id, l.title, COALESCE(p.completed, 0) as completed
        FROM "Lesson" l
        JOIN "Module" m ON m.id = l.moduleId
