@@ -10,6 +10,14 @@ export default async function StudentProgressPage(props: any) {
   if (session.user.role !== 'ADMIN') return redirect('/dashboard');
 
   const { id } = await params;
+  if (!sqlite) {
+    return (
+      <div className="min-h-screen bg-[#060606] text-white px-6 py-8">
+        <h1 className="text-2xl font-bold mb-4">Database Unavailable</h1>
+        <p className="text-sm text-white/40">The local SQLite database is not available in this environment.</p>
+      </div>
+    );
+  }
   const user = sqlite.prepare('SELECT id, name, email, createdAt FROM "users" WHERE id = ?').get(id) as any;
   if (!user) {
     return (

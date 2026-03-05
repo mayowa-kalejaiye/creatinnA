@@ -1,8 +1,8 @@
 {
   "schema": "./drizzle/schema.ts",
   "out": "./drizzle/migrations",
-  "dialect": "sqlite",
+  "dialect": "pg",
   "dbCredentials": {
-    "url": "./data/dev.db"
+  "url":"postgresql://postgres:Mayorkay%40200801@db.wkxtdkycqapzkkngshlh.supabase.co:5432/postgres"
   }
 }
