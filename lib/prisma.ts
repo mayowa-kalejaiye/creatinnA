@@ -34,9 +34,25 @@ if (sqliteInstance) {
 }
 
 export const db = drizzleDb
-// Export sqlite as `any` to avoid TypeScript "possibly null" errors in serverless builds
-// where the native better-sqlite3 bindings may be unavailable at build time.
-export const sqlite: any = sqliteInstance
+
+// Provide a safe sqlite fallback when native bindings or the DB file are unavailable.
+// Many server-side pages call `sqlite.prepare(...).get()` during prerender; returning
+// a lightweight shim prevents runtime crashes in serverless builds and lets pages
+// render empty/default states instead of throwing.
+const sqliteFallback = {
+  prepare: (_sql: string) => ({
+    get: (..._args: any[]) => null,
+    all: (..._args: any[]) => [],
+    run: (..._args: any[]) => ({ changes: 0 }),
+  }),
+  transaction: (fn: Function) => {
+    // run the transaction callback immediately; it's safe because shimbed queries are no-ops
+    return fn()
+  },
+}
+
+// Export sqlite as `any` (real instance or fallback) to avoid TS 'possibly null' errors
+export const sqlite: any = sqliteInstance ?? sqliteFallback
 export type DatabaseClient = DrizzleDb
 
 if (process.env.NODE_ENV !== 'production') {
