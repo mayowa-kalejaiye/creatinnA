@@ -34,7 +34,9 @@ if (sqliteInstance) {
 }
 
 export const db = drizzleDb
-export const sqlite = sqliteInstance
+// Export sqlite as `any` to avoid TypeScript "possibly null" errors in serverless builds
+// where the native better-sqlite3 bindings may be unavailable at build time.
+export const sqlite: any = sqliteInstance
 export type DatabaseClient = DrizzleDb
 
 if (process.env.NODE_ENV !== 'production') {
