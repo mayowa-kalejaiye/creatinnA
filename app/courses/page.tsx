@@ -1,13 +1,11 @@
 import { auth } from "@/lib/auth";
-import { sqlite } from "@/lib/prisma";
+import { getPublishedCoursesWithCounts } from "@/lib/db-adapter";
 import Header from '@/components/Header';
 import CoursesClient from "./CoursesClient";
 
 export default async function CoursesPage() {
-  // Load published courses
-  const coursesRaw = sqlite
-    .prepare(`SELECT id, title, slug, description, thumbnail, price, duration, level, category FROM "Course" WHERE isPublished = 1 ORDER BY createdAt DESC`)
-    .all();
+  // Load published courses (adapter returns counts and normalized fields)
+  const courses = await getPublishedCoursesWithCounts();
   type Course = {
     id: string;
     title: string;
@@ -20,29 +18,14 @@ export default async function CoursesPage() {
     category: string;
     _count: { enrollments: number; modules: number };
   };
-  // Add _count with real module/enrollment counts
-  const courses: Course[] = Array.isArray(coursesRaw)
-    ? (coursesRaw as any[]).map((c) => {
-        const moduleCount = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM "Module" WHERE courseId = ?`).get(c.id) as any)?.cnt ?? 0;
-        const enrollmentCount = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM "Enrollment" WHERE courseId = ?`).get(c.id) as any)?.cnt ?? 0;
-        return {
-          ...c,
-          description: c.description ?? '',
-          thumbnail: c.thumbnail ?? null,
-          price: c.price ?? 0,
-          duration: c.duration ?? '',
-          level: c.level ?? '',
-          category: c.category ?? '',
-          _count: { enrollments: enrollmentCount, modules: moduleCount },
-        };
-      })
-    : [];
+  // `courses` already includes _count when returned from adapter; ensure it's an array
+  const courseList = Array.isArray(courses) ? courses : [];
 
   return (
     <div className="min-h-screen">
       <Header />
       <div>
-        <CoursesClient courses={courses} userEnrollments={[]} isLoggedIn={false} />
+        <CoursesClient courses={courseList} userEnrollments={[]} isLoggedIn={false} />
       </div>
     </div>
   );

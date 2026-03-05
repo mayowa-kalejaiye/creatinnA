@@ -116,6 +116,89 @@ export async function getCourseBySlug(slug: string) {
   return course
 }
 
+export async function getTopPublishedCourses(limit = 3) {
+  // Return top `limit` published courses. Prefer Postgres when available.
+  if (pgPool) {
+    try {
+      const res = await pgPool.query(
+        'SELECT id, title, slug, description, thumbnail, price, duration, level, category, "createdAt", "isPublished" FROM "Course" WHERE "isPublished" = 1 ORDER BY "createdAt" DESC LIMIT $1',
+        [limit]
+      )
+      return res.rows ?? []
+    } catch (e) {
+      console.warn('pg getTopPublishedCourses failed, falling back to sqlite:', e)
+    }
+  }
+
+  if (!sqlite) return []
+  try {
+    const rows = sqlite.prepare(`SELECT id, title, slug, description, thumbnail, price, duration, level, category, createdAt, isPublished FROM "Course" WHERE isPublished = 1 ORDER BY createdAt DESC LIMIT ?`).all(limit)
+    if (Array.isArray(rows)) return rows
+    return []
+  } catch (e) {
+    try {
+      const rows2 = sqlite.prepare(`SELECT id, title, slug, description, thumbnail, price, duration, level, category, createdAt, isPublished FROM courses WHERE isPublished = 1 ORDER BY createdAt DESC LIMIT ?`).all(limit)
+      if (Array.isArray(rows2)) return rows2
+    } catch (e2) {}
+    return []
+  }
+}
+
+export async function getPublishedCoursesWithCounts() {
+  // Returns published courses with module and enrollment counts
+  if (pgPool) {
+    try {
+      const coursesRes = await pgPool.query('SELECT id, title, slug, description, thumbnail, price, duration, level, category FROM "Course" WHERE "isPublished" = 1 ORDER BY "createdAt" DESC')
+      const courses = coursesRes.rows || []
+      if (!courses.length) return []
+
+      const ids = courses.map((c: any) => c.id)
+      // module counts
+      const modulesRes = await pgPool.query('SELECT "courseId" as courseId, COUNT(*) as cnt FROM "Module" WHERE "courseId" = ANY($1) GROUP BY "courseId"', [ids])
+      const enrollRes = await pgPool.query('SELECT "courseId" as courseId, COUNT(*) as cnt FROM "Enrollment" WHERE "courseId" = ANY($1) GROUP BY "courseId"', [ids])
+      const modMap: Record<string, number> = {}
+      for (const r of modulesRes.rows || []) modMap[r.courseid || r.courseId] = Number(r.cnt)
+      const enMap: Record<string, number> = {}
+      for (const r of enrollRes.rows || []) enMap[r.courseid || r.courseId] = Number(r.cnt)
+
+      return courses.map((c: any) => ({
+        ...c,
+        description: c.description ?? '',
+        thumbnail: c.thumbnail ?? null,
+        price: c.price ?? 0,
+        duration: c.duration ?? '',
+        level: c.level ?? '',
+        category: c.category ?? '',
+        _count: { enrollments: enMap[c.id] ?? 0, modules: modMap[c.id] ?? 0 },
+      }))
+    } catch (e) {
+      console.warn('pg getPublishedCoursesWithCounts failed, falling back to sqlite:', e)
+    }
+  }
+
+  if (!sqlite) return []
+  try {
+    const coursesRaw = sqlite.prepare(`SELECT id, title, slug, description, thumbnail, price, duration, level, category FROM "Course" WHERE isPublished = 1 ORDER BY createdAt DESC`).all()
+    const courses: any[] = Array.isArray(coursesRaw) ? coursesRaw : []
+    return courses.map((c: any) => {
+      const moduleCount = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM "Module" WHERE courseId = ?`).get(c.id) as any)?.cnt ?? 0
+      const enrollmentCount = (sqlite.prepare(`SELECT COUNT(*) as cnt FROM "Enrollment" WHERE courseId = ?`).get(c.id) as any)?.cnt ?? 0
+      return {
+        ...c,
+        description: c.description ?? '',
+        thumbnail: c.thumbnail ?? null,
+        price: c.price ?? 0,
+        duration: c.duration ?? '',
+        level: c.level ?? '',
+        category: c.category ?? '',
+        _count: { enrollments: enrollmentCount, modules: moduleCount },
+      }
+    })
+  } catch (e) {
+    return []
+  }
+}
+
 export async function createEnrollment(args: { userId: string; courseId: string }) {
   const id = genId()
   const now = new Date().toISOString()

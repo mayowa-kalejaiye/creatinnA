@@ -5,11 +5,11 @@ import Footer from '@/components/Footer';
 import ScrollMorphHero from "@/components/ui/scroll-morph-hero";
 import VisualGrid from '@/components/ui/visual-grid';
 import Image from 'next/image';
-import { sqlite } from '@/lib/prisma';
+import { getTopPublishedCourses } from '@/lib/db-adapter'
 
-export default function Home() {
+export default async function Home() {
   // Load top 3 published courses to feature as programs so admin-managed data drives the homepage.
-  // Ensure core service programs exist in the DB (the admin will populate modules later), then load published courses.
+  // For production/Postgres this will read from Supabase; for dev it will read from sqlite.
   const corePrograms = [
     {
       title: '2-Week Video Editing Intensive',
@@ -47,42 +47,14 @@ export default function Home() {
   ];
 
   const nowIso = new Date().toISOString();
-  for (const p of corePrograms) {
-    try {
-      const exists = sqlite.prepare('SELECT id FROM "Course" WHERE slug = ?').get(p.slug);
-      if (!exists) {
-        sqlite.prepare(
-          `INSERT INTO "Course" (id, title, slug, description, thumbnail, price, duration, level, isPublished, category, createdAt, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-        ).run((globalThis as any).crypto?.randomUUID?.() ?? String(Date.now()), p.title, p.slug, p.description, p.thumbnail, p.price, p.duration, p.level, p.isPublished, p.category, nowIso, nowIso);
-      }
-    } catch (e) {
-      try {
-        const existsLower = sqlite.prepare('SELECT id FROM courses WHERE slug = ?').get(p.slug);
-        if (!existsLower) {
-          sqlite.prepare(
-            `INSERT INTO courses (id, title, slug, description, thumbnail, price, duration, level, isPublished, category, createdAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run((globalThis as any).crypto?.randomUUID?.() ?? String(Date.now()), p.title, p.slug, p.description, p.thumbnail, p.price, p.duration, p.level, p.isPublished, p.category, nowIso, nowIso);
-        }
-      } catch (e2) {
-        // ignore insertion errors (table may not exist in some dev setups)
-      }
-    }
-  }
 
-  // Be resilient to DB table name differences and fall back to the three canonical sample programs.
-  let programs: any[] = [];
+  // Fetch published programs via adapter (works with pg or sqlite)
+  let programs: any[] = []
   try {
-    const fromCourse = sqlite.prepare(`SELECT id, title, slug, description, thumbnail, price, duration, level, category, isPublished FROM "Course" WHERE isPublished = 1 ORDER BY createdAt DESC LIMIT 3`).all();
-    if (Array.isArray(fromCourse) && fromCourse.length) {
-      programs = fromCourse as any[];
-    } else {
-      const fromLower = sqlite.prepare(`SELECT id, title, slug, description, thumbnail, price, duration, level, category, isPublished FROM courses WHERE isPublished = 1 ORDER BY createdAt DESC LIMIT 3`).all();
-      if (Array.isArray(fromLower) && fromLower.length) programs = fromLower as any[];
-    }
+    const rows = await getTopPublishedCourses(3)
+    if (Array.isArray(rows) && rows.length) programs = rows
   } catch (e) {
-    // ignore DB errors and fall back to defaults below
+    // ignore and fall back to corePrograms below
   }
 
   if (!programs.length) {
