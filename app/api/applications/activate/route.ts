@@ -37,8 +37,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "applicationId is required" }, { status: 400 });
     }
 
+    if (!sqlite) {
+      return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
+    }
+    const db = sqlite
+
     // Fetch the application
-    const app: any = sqlite
+    const app: any = db
       .prepare('SELECT * FROM "applications" WHERE id = ?')
       .get(applicationId);
     if (!app) {
@@ -52,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     // Find the user
-    const user: any = sqlite
+    const user: any = db
       .prepare('SELECT * FROM "users" WHERE id = ?')
       .get(app.userId);
     if (!user) {
@@ -66,24 +71,24 @@ export async function POST(req: Request) {
     if (isFirstTime) {
       plainPassword = generatePassword(10);
       const hashed = await bcrypt.hash(plainPassword, 10);
-      sqlite
+      db
         .prepare('UPDATE "users" SET password = ?, role = ?, updatedAt = ? WHERE id = ?')
         .run(hashed, 'STUDENT', new Date().toISOString(), user.id);
     } else if (user.role !== 'STUDENT' && user.role !== 'ADMIN') {
       // Ensure activated users have STUDENT role
-      sqlite
+      db
         .prepare('UPDATE "users" SET role = ?, updatedAt = ? WHERE id = ?')
         .run('STUDENT', new Date().toISOString(), user.id);
     }
 
     // Find the course by slug
     const slug = programToSlug[app.program] ?? app.program;
-    let course: any = sqlite
+    let course: any = db
       .prepare('SELECT id, title, slug FROM "Course" WHERE slug = ?')
       .get(slug);
     if (!course) {
       // Try lowercase table
-      course = sqlite
+      course = db
         .prepare('SELECT id, title, slug FROM courses WHERE slug = ?')
         .get(slug);
     }
@@ -95,12 +100,12 @@ export async function POST(req: Request) {
     }
 
     // Check if already enrolled
-    let enrollment: any = sqlite
+    let enrollment: any = db
       .prepare('SELECT id FROM "Enrollment" WHERE userId = ? AND courseId = ?')
       .get(user.id, course.id);
     if (!enrollment) {
       // Try lowercase table
-      enrollment = sqlite
+      enrollment = db
         .prepare('SELECT id FROM enrollments WHERE userId = ? AND courseId = ?')
         .get(user.id, course.id);
     }
@@ -111,7 +116,7 @@ export async function POST(req: Request) {
         (globalThis as any).crypto?.randomUUID?.() ?? Date.now().toString();
       const now = new Date().toISOString();
       try {
-        sqlite
+        db
           .prepare(
             `INSERT INTO "Enrollment" (id, userId, courseId, status, progress, enrolledAt, updatedAt)
              VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -120,7 +125,7 @@ export async function POST(req: Request) {
         enrolled = true;
       } catch {
         // Try lowercase table
-        sqlite
+        db
           .prepare(
             `INSERT INTO enrollments (id, userId, courseId, status, progress, enrolledAt, updatedAt)
              VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -131,7 +136,7 @@ export async function POST(req: Request) {
     }
 
     // Mark the application as "activated" so admin knows it's done
-    sqlite
+    db
       .prepare('UPDATE "applications" SET status = ? WHERE id = ?')
       .run("activated", applicationId);
 
