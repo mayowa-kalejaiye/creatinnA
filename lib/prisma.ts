@@ -11,17 +11,53 @@ export let db: any = null
 export let sqlite: any = null
 export type DatabaseClient = any
 
-if (PROD_DB_URL) {
-  // Production: connect to Postgres via pg Pool and Drizzle node-postgres adapter
-  const pool = new Pool({ connectionString: PROD_DB_URL })
-  const pgDb = pgDrizzle(pool)
-  db = pgDb
-  sqlite = null
+// Provide the same sqlite fallback used for local dev so callers that do
+// `sqlite.prepare(...).get()` don't crash during build/prerender when we
+// prefer Postgres for runtime. Postgres connections are initialized lazily.
+const sqliteFallback = {
+  prepare: (_sql: string) => ({
+    get: (..._args: any[]) => null,
+    all: (..._args: any[]) => [],
+    run: (..._args: any[]) => ({ changes: 0 }),
+  }),
+  transaction: (fn: Function) => {
+    return fn()
+  },
+}
 
-  if (process.env.NODE_ENV !== 'production') {
-    ;(globalThis as any).pgPool = pool
-    ;(globalThis as any).drizzleDb = pgDb
+if (PROD_DB_URL) {
+  // Production: lazily initialize Postgres Pool and Drizzle adapter when first used.
+  let pool: Pool | null = null
+  let pgDb: any = null
+
+  function ensurePg() {
+    if (!pool) {
+      pool = new Pool({ connectionString: PROD_DB_URL })
+      pgDb = pgDrizzle(pool)
+      if (process.env.NODE_ENV !== 'production') {
+        ;(globalThis as any).pgPool = pool
+        ;(globalThis as any).drizzleDb = pgDb
+      }
+    }
+    return { pool, pgDb }
   }
+
+  // `db` is a lightweight proxy that initializes the real `pgDrizzle` instance on first access.
+  db = new Proxy({}, {
+    get(_, prop) {
+      const { pgDb: real } = ensurePg()
+      if (!real) return undefined
+      return (real as any)[prop]
+    },
+    apply(_target, _thisArg, args) {
+      const { pgDb: real } = ensurePg()
+      if (!real) throw new Error('Postgres DB not available')
+      return (real as any).apply(_thisArg, args)
+    },
+  })
+
+  // Keep a sqlite-compatible fallback so build-time code that expects `sqlite.prepare` works.
+  sqlite = sqliteFallback
 } else {
   // Local dev fallback: use better-sqlite3 + drizzle for sqlite
   let sqlitePath = process.env.DATABASE_URL ?? './data/dev.db'
@@ -60,17 +96,6 @@ if (PROD_DB_URL) {
   // Many server-side pages call `sqlite.prepare(...).get()` during prerender; returning
   // a lightweight shim prevents runtime crashes in serverless builds and lets pages
   // render empty/default states instead of throwing.
-  const sqliteFallback = {
-    prepare: (_sql: string) => ({
-      get: (..._args: any[]) => null,
-      all: (..._args: any[]) => [],
-      run: (..._args: any[]) => ({ changes: 0 }),
-    }),
-    transaction: (fn: Function) => {
-      // run the transaction callback immediately; it's safe because shimmed queries are no-ops
-      return fn()
-    },
-  }
 
   db = drizzleDb
   sqlite = sqliteInstance ?? sqliteFallback
