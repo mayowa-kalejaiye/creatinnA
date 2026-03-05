@@ -20,8 +20,13 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
+  if (!sqlite) {
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
+  }
+  const db = sqlite
+
   // Check user exists and is a student (or revoked)
-  const user = sqlite.prepare('SELECT id, role FROM "users" WHERE id = ?').get(id) as any;
+  const user = db.prepare('SELECT id, role FROM "users" WHERE id = ?').get(id) as any;
   if (!user) {
     return NextResponse.json({ error: 'Student not found' }, { status: 404 });
   }
@@ -30,16 +35,16 @@ export async function PATCH(
   }
 
   if (action === 'revoke') {
-    sqlite.prepare('UPDATE "users" SET role = ? WHERE id = ?').run('REVOKED', id);
+    db.prepare('UPDATE "users" SET role = ? WHERE id = ?').run('REVOKED', id);
     // Suspend all active enrollments
-    sqlite.prepare('UPDATE "Enrollment" SET status = ? WHERE userId = ? AND status = ?').run('revoked', id, 'active');
+    db.prepare('UPDATE "Enrollment" SET status = ? WHERE userId = ? AND status = ?').run('revoked', id, 'active');
     return NextResponse.json({ success: true, message: 'Student access revoked' });
   }
 
   if (action === 'restore') {
-    sqlite.prepare('UPDATE "users" SET role = ? WHERE id = ?').run('STUDENT', id);
+    db.prepare('UPDATE "users" SET role = ? WHERE id = ?').run('STUDENT', id);
     // Restore enrollments
-    sqlite.prepare('UPDATE "Enrollment" SET status = ? WHERE userId = ? AND status = ?').run('active', id, 'revoked');
+    db.prepare('UPDATE "Enrollment" SET status = ? WHERE userId = ? AND status = ?').run('active', id, 'revoked');
     return NextResponse.json({ success: true, message: 'Student access restored' });
   }
 
@@ -59,7 +64,12 @@ export async function DELETE(
   const { id } = await params;
 
   // Check user exists and is not an admin
-  const user = sqlite.prepare('SELECT id, role FROM "users" WHERE id = ?').get(id) as any;
+  if (!sqlite) {
+    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
+  }
+  const db = sqlite
+
+  const user = db.prepare('SELECT id, role FROM "users" WHERE id = ?').get(id) as any;
   if (!user) {
     return NextResponse.json({ error: 'Student not found' }, { status: 404 });
   }
@@ -68,12 +78,12 @@ export async function DELETE(
   }
 
   // Delete all related data in a transaction
-  const deleteAll = sqlite.transaction(() => {
-    sqlite.prepare('DELETE FROM "Progress" WHERE userId = ?').run(id);
-    sqlite.prepare('DELETE FROM "Payment" WHERE userId = ?').run(id);
-    sqlite.prepare('DELETE FROM "Enrollment" WHERE userId = ?').run(id);
-    sqlite.prepare('DELETE FROM "applications" WHERE userId = ?').run(id);
-    sqlite.prepare('DELETE FROM "users" WHERE id = ?').run(id);
+  const deleteAll = db.transaction(() => {
+    db.prepare('DELETE FROM "Progress" WHERE userId = ?').run(id);
+    db.prepare('DELETE FROM "Payment" WHERE userId = ?').run(id);
+    db.prepare('DELETE FROM "Enrollment" WHERE userId = ?').run(id);
+    db.prepare('DELETE FROM "applications" WHERE userId = ?').run(id);
+    db.prepare('DELETE FROM "users" WHERE id = ?').run(id);
   });
 
   deleteAll();
