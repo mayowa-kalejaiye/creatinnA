@@ -4,7 +4,13 @@ import { Pool } from 'pg'
 import { drizzle as pgDrizzle } from 'drizzle-orm/node-postgres'
 
 // If a production-style DB url is present (Vercel envs, Supabase), prefer Postgres.
-const PROD_DB_URL = process.env.DATABASE_URL ?? process.env.SUPABASE_DB_URL
+// Detect only real Postgres connection strings. Avoid treating SQLite file paths
+// (e.g. `file:./data/dev.db`) as Postgres URLs.
+function looksLikePostgres(conn?: string | null) {
+  if (!conn) return false
+  return /^(postgres|postgresql):\/\//i.test(conn) || conn.includes('host=')
+}
+const PROD_DB_URL = (looksLikePostgres(process.env.SUPABASE_DB_URL) ? process.env.SUPABASE_DB_URL : (looksLikePostgres(process.env.DATABASE_URL) ? process.env.DATABASE_URL : undefined)) ?? null
 
 // Common exports (filled below depending on environment)
 export let db: any = null
