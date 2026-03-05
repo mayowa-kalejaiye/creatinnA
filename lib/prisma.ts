@@ -10,7 +10,21 @@ function looksLikePostgres(conn?: string | null) {
   if (!conn) return false
   return /^(postgres|postgresql):\/\//i.test(conn) || conn.includes('host=')
 }
-const PROD_DB_URL = (looksLikePostgres(process.env.SUPABASE_DB_URL) ? process.env.SUPABASE_DB_URL : (looksLikePostgres(process.env.DATABASE_URL) ? process.env.DATABASE_URL : undefined)) ?? null
+
+// Only enable Supabase/Postgres automatically in production. For local development
+// prefer the SQLite file unless the developer explicitly opts in by setting
+// `USE_SUPABASE=1` in the environment. This avoids accidentally using the remote
+// DB when `SUPABASE_DB_URL` is present in a local .env.
+const isProd = process.env.NODE_ENV === 'production'
+const explicitOptIn = process.env.USE_SUPABASE === '1'
+let PROD_DB_URL: string | null = null
+if (looksLikePostgres(process.env.SUPABASE_DB_URL) && (isProd || explicitOptIn)) {
+  PROD_DB_URL = process.env.SUPABASE_DB_URL ?? null
+} else if (looksLikePostgres(process.env.DATABASE_URL) && (isProd || explicitOptIn)) {
+  PROD_DB_URL = process.env.DATABASE_URL ?? null
+} else {
+  PROD_DB_URL = null
+}
 
 // Common exports (filled below depending on environment)
 export let db: any = null
