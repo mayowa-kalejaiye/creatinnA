@@ -9,6 +9,9 @@ export async function GET() {
   const using = Boolean(usingPostgres)
   let dbReachable = false
   let error: string | undefined
+  // include the raw URL (masked) to help track what value the runtime actually has
+  const rawUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || ''
+  const maskedUrl = rawUrl.replace(/:(?:[^@])+@/, ':<password>@')
 
   if (using) {
     try {
