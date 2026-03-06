@@ -43,6 +43,18 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   // list published courses
+  // debug: run raw query through pgPool to see what Postgres returns
+  if (typeof globalThis !== 'undefined' && (globalThis as any).pgPool) {
+    try {
+      const rawRes = await (globalThis as any).pgPool.query(
+        'SELECT id FROM "Course" WHERE "isPublished" = 1'
+      )
+      console.log('raw pg query returned', rawRes.rows.length, 'rows')
+    } catch (e) {
+      console.error('raw pg query failed', e)
+    }
+  }
+
   const rows = await getPublishedCoursesWithCounts()
   // log for diagnostics
   console.log('GET /api/courses ->', rows ? rows.length : rows, 'rows')
