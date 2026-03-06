@@ -44,5 +44,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   // list published courses
   const rows = await getPublishedCoursesWithCounts()
+  // log for diagnostics
+  console.log('GET /api/courses ->', rows ? rows.length : rows, 'rows')
   return NextResponse.json(rows)
 }
