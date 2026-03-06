@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { usingPostgres } from 'lib/prisma'
+import { usingPostgres } from '@/lib/prisma'
 
 // Lightweight debug endpoint to verify whether the deployed runtime is
 // using Postgres and whether it can reach the database. This intentionally
