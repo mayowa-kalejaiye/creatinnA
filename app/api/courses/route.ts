@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createCourse, getPublishedCoursesWithCounts } from '@/lib/db-adapter';
+import { pgPool } from '@/lib/prisma';
 
 export async function POST(req: NextRequest) {
   try {
@@ -44,9 +45,9 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   // list published courses
   // debug: run raw query through pgPool to see what Postgres returns
-  if (typeof globalThis !== 'undefined' && (globalThis as any).pgPool) {
+  if (pgPool) {
     try {
-      const rawRes = await (globalThis as any).pgPool.query(
+      const rawRes = await pgPool.query(
         'SELECT id FROM "Course" WHERE "isPublished" = 1'
       )
       console.log('raw pg query returned', rawRes.rows.length, 'rows')
