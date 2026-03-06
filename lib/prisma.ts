@@ -11,6 +11,24 @@ function looksLikePostgres(conn?: string | null) {
   return /^(postgres|postgresql):\/\//i.test(conn) || conn.includes('host=')
 }
 
+// Some environments (Vercel UI) may mangle or decode percent-encoded characters
+// in a long connection URI. To work around this we also support supplying a
+// **base64-encoded** URL via SUPABASE_DB_URL_B64. This lets the user copy the
+// raw encoded URI (as produced by Supabase) and encode it themselves. It will
+// survive any transformation by the environment.
+function getPostgresUrl() {
+  const direct = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL
+  if (looksLikePostgres(direct)) return direct
+  const b64 = process.env.SUPABASE_DB_URL_B64
+  if (b64) {
+    try {
+      const decoded = Buffer.from(b64, 'base64').toString('utf-8')
+      if (looksLikePostgres(decoded)) return decoded
+    } catch {}
+  }
+  return direct
+}
+
 // Only enable Supabase/Postgres automatically in production. For local development
 // prefer the SQLite file unless the developer explicitly opts in by setting
 // `USE_SUPABASE=1` in the environment. This avoids accidentally using the remote
@@ -18,10 +36,9 @@ function looksLikePostgres(conn?: string | null) {
 const isProd = process.env.NODE_ENV === 'production'
 const explicitOptIn = process.env.USE_SUPABASE === '1'
 let PROD_DB_URL: string | null = null
-if (looksLikePostgres(process.env.SUPABASE_DB_URL) && (isProd || explicitOptIn)) {
-  PROD_DB_URL = process.env.SUPABASE_DB_URL ?? null
-} else if (looksLikePostgres(process.env.DATABASE_URL) && (isProd || explicitOptIn)) {
-  PROD_DB_URL = process.env.DATABASE_URL ?? null
+const candidate = getPostgresUrl()
+if (looksLikePostgres(candidate) && (isProd || explicitOptIn)) {
+  PROD_DB_URL = candidate
 } else {
   PROD_DB_URL = null
 }

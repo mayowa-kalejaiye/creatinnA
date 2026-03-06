@@ -11,7 +11,9 @@ export async function GET() {
   let error: string | undefined
   // include the raw URL (masked) to help track what value the runtime actually has
   const rawUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL || ''
-  const maskedUrl = rawUrl.replace(/:(?:[^@])+@/, ':<password>@')
+  const rawB64 = process.env.SUPABASE_DB_URL_B64 || ''
+  // mask only the password portion, preserving the username if present
+  const maskedUrl = rawUrl.replace(/(https?:\/\/[^:\/]+):([^@]+)@/, '$1:<password>@')
 
   if (using) {
     try {
@@ -31,11 +33,11 @@ export async function GET() {
       }
       await pool.end()
       if (res && res.rows) dbReachable = true
-      return NextResponse.json({ usingPostgres: using, dbReachable, currentDatabase: currentDb, currentUser, maskedUrl, error })
+      return NextResponse.json({ usingPostgres: using, dbReachable, currentDatabase: currentDb, currentUser, rawUrl, maskedUrl, error })
     } catch (err: any) {
       error = String(err?.message ?? err)
     }
   }
 
-  return NextResponse.json({ usingPostgres: using, dbReachable, maskedUrl, error })
+  return NextResponse.json({ usingPostgres: using, dbReachable, rawUrl, maskedUrl, error })
 }
