@@ -1,23 +1,12 @@
 import { NextResponse } from "next/server"
-import { sqlite } from "../../../lib/prisma"
 import { notifyAdminNewApplication } from "../../../lib/mail"
+import { getAllApplications, getUserByEmail, createUser, createApplication, updateApplicationStatus } from "../../../lib/db-adapter"
 
 // ---------- GET: list applications (admin) ----------
 export async function GET() {
   try {
-    const rows = sqlite
-      .prepare(
-        `SELECT a.*, u.name as userName, u.email as userEmail, u.phone as userPhone
-         FROM "applications" a
-         LEFT JOIN "users" u ON u.id = a.userId
-         ORDER BY a.submittedAt DESC`
-      )
-      .all();
-    const normalized = (rows as any[]).map((a: any) => ({
-      ...a,
-      user: { name: a.userName, email: a.userEmail, phone: a.userPhone },
-    }));
-    return NextResponse.json(normalized);
+    const rows = await getAllApplications()
+    return NextResponse.json(rows)
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });
   }
@@ -34,27 +23,18 @@ export async function POST(req: Request) {
     }
 
     // Look up or create a lightweight user record so the application links to a userId
-    let userRow: any = sqlite.prepare('SELECT id FROM "users" WHERE email = ?').get(email);
-    if (!userRow) {
-      const uid = (globalThis as any).crypto?.randomUUID?.() ?? Date.now().toString();
-      const now = new Date().toISOString();
-      sqlite.prepare(
-        `INSERT INTO "users" (id, name, email, password, phone, role, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(uid, name, email, '__applicant__', phone ?? null, 'STUDENT', now, now);
-      userRow = { id: uid };
+    let user = await getUserByEmail(email)
+    if (!user) {
+      const created = await createUser({ name, email, password: '__applicant__', phone: phone ?? null, role: 'STUDENT' })
+      user = created
     }
 
-    const id = (globalThis as any).crypto?.randomUUID?.() ?? Date.now().toString()
-    sqlite.prepare(
-      `INSERT INTO "applications" (id, userId, program, status, experience, motivation, commitment, submittedAt, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, userRow.id, program, 'pending', experience, motivation, commitment ? 1 : 0, new Date().toISOString(), body.notes ?? null);
+    const application = await createApplication({ userId: (user as any).id, program, experience, motivation, commitment: Boolean(commitment), notes: body.notes ?? null })
 
     // Notify admin via email (fire-and-forget — don't block the response)
     notifyAdminNewApplication({ name, email, phone, program, experience, motivation }).catch(() => {});
 
-    return NextResponse.json({ success: true, id }, { status: 201 })
+    return NextResponse.json({ success: true, id: (application as any)?.id ?? null }, { status: 201 })
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
@@ -72,16 +52,8 @@ export async function PATCH(req: Request) {
     if (!allowed.includes(status)) {
       return NextResponse.json({ error: `status must be one of: ${allowed.join(', ')}` }, { status: 400 });
     }
-
-    const sets: string[] = ['status = ?'];
-    const vals: any[] = [status];
-    if (notes !== undefined) {
-      sets.push('notes = ?');
-      vals.push(notes);
-    }
-    vals.push(id);
-    sqlite.prepare(`UPDATE "applications" SET ${sets.join(', ')} WHERE id = ?`).run(...vals);
-
+    const ok = await updateApplicationStatus(id, status, notes)
+    if (!ok) return NextResponse.json({ error: 'Failed to update' }, { status: 500 })
     return NextResponse.json({ success: true });
   } catch (err) {
     return NextResponse.json({ error: "Server error" }, { status: 500 });

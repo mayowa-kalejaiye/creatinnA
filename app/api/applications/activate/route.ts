@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { sqlite } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { getApplicationById, getUserById, getCourseBySlug, createEnrollment, updateUserPasswordAndRole, updateApplicationStatus } from "@/lib/db-adapter";
 
 /**
  * POST /api/applications/activate
@@ -36,16 +36,8 @@ export async function POST(req: Request) {
     if (!applicationId) {
       return NextResponse.json({ error: "applicationId is required" }, { status: 400 });
     }
-
-    if (!sqlite) {
-      return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
-    }
-    const db = sqlite
-
     // Fetch the application
-    const app: any = db
-      .prepare('SELECT * FROM "applications" WHERE id = ?')
-      .get(applicationId);
+    const app: any = await getApplicationById(applicationId)
     if (!app) {
       return NextResponse.json({ error: "Application not found" }, { status: 404 });
     }
@@ -57,9 +49,7 @@ export async function POST(req: Request) {
     }
 
     // Find the user
-    const user: any = db
-      .prepare('SELECT * FROM "users" WHERE id = ?')
-      .get(app.userId);
+    const user: any = await getUserById(app.userId)
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
@@ -71,27 +61,15 @@ export async function POST(req: Request) {
     if (isFirstTime) {
       plainPassword = generatePassword(10);
       const hashed = await bcrypt.hash(plainPassword, 10);
-      db
-        .prepare('UPDATE "users" SET password = ?, role = ?, updatedAt = ? WHERE id = ?')
-        .run(hashed, 'STUDENT', new Date().toISOString(), user.id);
+      await updateUserPasswordAndRole(user.id, hashed, 'STUDENT')
     } else if (user.role !== 'STUDENT' && user.role !== 'ADMIN') {
       // Ensure activated users have STUDENT role
-      db
-        .prepare('UPDATE "users" SET role = ?, updatedAt = ? WHERE id = ?')
-        .run('STUDENT', new Date().toISOString(), user.id);
+      await updateUserPasswordAndRole(user.id, null, 'STUDENT')
     }
 
     // Find the course by slug
     const slug = programToSlug[app.program] ?? app.program;
-    let course: any = db
-      .prepare('SELECT id, title, slug FROM "Course" WHERE slug = ?')
-      .get(slug);
-    if (!course) {
-      // Try lowercase table
-      course = db
-        .prepare('SELECT id, title, slug FROM courses WHERE slug = ?')
-        .get(slug);
-    }
+    const course: any = await getCourseBySlug(slug)
     if (!course) {
       return NextResponse.json(
         { error: `Course not found for program "${app.program}"` },
@@ -99,46 +77,13 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if already enrolled
-    let enrollment: any = db
-      .prepare('SELECT id FROM "Enrollment" WHERE userId = ? AND courseId = ?')
-      .get(user.id, course.id);
-    if (!enrollment) {
-      // Try lowercase table
-      enrollment = db
-        .prepare('SELECT id FROM enrollments WHERE userId = ? AND courseId = ?')
-        .get(user.id, course.id);
-    }
-
-    let enrolled = false;
-    if (!enrollment) {
-      const eid =
-        (globalThis as any).crypto?.randomUUID?.() ?? Date.now().toString();
-      const now = new Date().toISOString();
-      try {
-        db
-          .prepare(
-            `INSERT INTO "Enrollment" (id, userId, courseId, status, progress, enrolledAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`
-          )
-          .run(eid, user.id, course.id, "active", 0, now, now);
-        enrolled = true;
-      } catch {
-        // Try lowercase table
-        db
-          .prepare(
-            `INSERT INTO enrollments (id, userId, courseId, status, progress, enrolledAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`
-          )
-          .run(eid, user.id, course.id, "active", 0, now, now);
-        enrolled = true;
-      }
-    }
+    // Ensure enrollment exists
+    let enrolled = false
+    const createdEnrollment = await createEnrollment({ userId: user.id, courseId: course.id })
+    if (createdEnrollment) enrolled = true
 
     // Mark the application as "activated" so admin knows it's done
-    db
-      .prepare('UPDATE "applications" SET status = ? WHERE id = ?')
-      .run("activated", applicationId);
+    await updateApplicationStatus(applicationId, 'activated')
 
     return NextResponse.json({
       email: user.email,

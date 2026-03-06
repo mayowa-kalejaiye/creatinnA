@@ -1,7 +1,6 @@
 import NextAuth, { AuthOptions } from "next-auth"
 import type { Session } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { sqlite } from "@/lib/prisma"
 import { getUserByEmail, getUserById } from "@/lib/db-adapter"
 import bcrypt from "bcryptjs"
 import { getServerSession } from "next-auth"

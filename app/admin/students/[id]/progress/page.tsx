@@ -1,7 +1,7 @@
-import { sqlite } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import AdminBack from '@/components/AdminBack';
+import { getUserById, getEnrollmentsForUser, getLessonsForCourseWithProgress } from '@/lib/db-adapter';
 
 export default async function StudentProgressPage(props: any) {
   const { params } = props;
@@ -10,16 +10,7 @@ export default async function StudentProgressPage(props: any) {
   if (session.user.role !== 'ADMIN') return redirect('/dashboard');
 
   const { id } = await params;
-  if (!sqlite) {
-    return (
-      <div className="min-h-screen bg-[#060606] text-white px-6 py-8">
-        <h1 className="text-2xl font-bold mb-4">Database Unavailable</h1>
-        <p className="text-sm text-white/40">The local SQLite database is not available in this environment.</p>
-      </div>
-    );
-  }
-  const db = sqlite
-  const user = db.prepare('SELECT id, name, email, createdAt FROM "users" WHERE id = ?').get(id) as any;
+  const user = await getUserById(id as string)
   if (!user) {
     return (
       <div className="min-h-screen bg-[#060606] text-white px-6 py-8">
@@ -29,45 +20,15 @@ export default async function StudentProgressPage(props: any) {
     );
   }
 
-  // fetch enrollments for this user
-  const enrollments = db.prepare(
-    `SELECT e.id as enrollmentId, e.courseId, e.progress as progress, e.enrolledAt, c.title as courseTitle
-     FROM "Enrollment" e
-     LEFT JOIN "Course" c ON c.id = e.courseId
-     WHERE e.userId = ?`
-  ).all(id) as any[];
-
-  // For each course, compute lesson count and completed count
-  const courseProgress = enrollments.map((en) => {
-    const totalLessonsRow = db.prepare(
-      `SELECT COUNT(l.id) as cnt
-       FROM "Lesson" l
-       JOIN "Module" m ON m.id = l.moduleId
-       WHERE m.courseId = ?`
-    ).get(en.courseId) as any;
-    const total = totalLessonsRow?.cnt ?? 0;
-    const completedRow = db.prepare(
-      `SELECT COUNT(p.id) as cnt
-       FROM "Progress" p
-       JOIN "Lesson" l ON l.id = p.lessonId
-       JOIN "Module" m ON m.id = l.moduleId
-       WHERE p.userId = ? AND m.courseId = ? AND p.completed = 1`
-    ).get(id, en.courseId) as any;
-    const completed = completedRow?.cnt ?? 0;
-    const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
-
-    // fetch lesson-level status
-    const lessons = db.prepare(
-      `SELECT l.id, l.title, COALESCE(p.completed, 0) as completed
-       FROM "Lesson" l
-       JOIN "Module" m ON m.id = l.moduleId
-       LEFT JOIN "Progress" p ON p.lessonId = l.id AND p.userId = ?
-      WHERE m.courseId = ?
-      ORDER BY l.createdAt ASC`)
-      .all(id, en.courseId) as any[];
-
-    return { enrollmentId: en.enrollmentId, courseId: en.courseId, courseTitle: en.courseTitle, total, completed, pct, lessons };
-  });
+  const enrollments = await getEnrollmentsForUser(id as string)
+  const courseProgress = [] as any[]
+  for (const en of enrollments) {
+    const lessons = await getLessonsForCourseWithProgress(id as string, en.courseId)
+    const total = Array.isArray(lessons) ? lessons.length : 0
+    const completed = Array.isArray(lessons) ? lessons.filter((l:any)=>Number(l.completed)===1).length : 0
+    const pct = total > 0 ? Math.round((completed / total) * 100) : 0
+    courseProgress.push({ enrollmentId: en.enrollmentId || en.id, courseId: en.courseId, courseTitle: en.courseTitle, total, completed, pct, lessons })
+  }
 
   return (
     <div className="min-h-screen bg-[#060606] text-white px-6 py-8">

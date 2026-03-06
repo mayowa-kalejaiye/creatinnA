@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { sqlite } from '@/lib/prisma';
+import { revokeStudent, restoreStudent, deleteUserAndData, getUserById } from '@/lib/db-adapter';
 
 // PATCH - Revoke or restore student access
 export async function PATCH(
@@ -20,13 +20,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
-  if (!sqlite) {
-    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
-  }
-  const db = sqlite
-
-  // Check user exists and is a student (or revoked)
-  const user = db.prepare('SELECT id, role FROM "users" WHERE id = ?').get(id) as any;
+  const user = await getUserById(id)
   if (!user) {
     return NextResponse.json({ error: 'Student not found' }, { status: 404 });
   }
@@ -35,17 +29,13 @@ export async function PATCH(
   }
 
   if (action === 'revoke') {
-    db.prepare('UPDATE "users" SET role = ? WHERE id = ?').run('REVOKED', id);
-    // Suspend all active enrollments
-    db.prepare('UPDATE "Enrollment" SET status = ? WHERE userId = ? AND status = ?').run('revoked', id, 'active');
-    return NextResponse.json({ success: true, message: 'Student access revoked' });
+    const ok = await revokeStudent(id)
+    return NextResponse.json({ success: !!ok, message: 'Student access revoked' })
   }
 
   if (action === 'restore') {
-    db.prepare('UPDATE "users" SET role = ? WHERE id = ?').run('STUDENT', id);
-    // Restore enrollments
-    db.prepare('UPDATE "Enrollment" SET status = ? WHERE userId = ? AND status = ?').run('active', id, 'revoked');
-    return NextResponse.json({ success: true, message: 'Student access restored' });
+    const ok = await restoreStudent(id)
+    return NextResponse.json({ success: !!ok, message: 'Student access restored' })
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
@@ -64,29 +54,9 @@ export async function DELETE(
   const { id } = await params;
 
   // Check user exists and is not an admin
-  if (!sqlite) {
-    return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
-  }
-  const db = sqlite
-
-  const user = db.prepare('SELECT id, role FROM "users" WHERE id = ?').get(id) as any;
-  if (!user) {
-    return NextResponse.json({ error: 'Student not found' }, { status: 404 });
-  }
-  if (user.role === 'ADMIN') {
-    return NextResponse.json({ error: 'Cannot delete admin accounts' }, { status: 403 });
-  }
-
-  // Delete all related data in a transaction
-  const deleteAll = db.transaction(() => {
-    db.prepare('DELETE FROM "Progress" WHERE userId = ?').run(id);
-    db.prepare('DELETE FROM "Payment" WHERE userId = ?').run(id);
-    db.prepare('DELETE FROM "Enrollment" WHERE userId = ?').run(id);
-    db.prepare('DELETE FROM "applications" WHERE userId = ?').run(id);
-    db.prepare('DELETE FROM "users" WHERE id = ?').run(id);
-  });
-
-  deleteAll();
-
-  return NextResponse.json({ success: true, message: 'Student permanently deleted' });
+  const user2 = await getUserById(id)
+  if (!user2) return NextResponse.json({ error: 'Student not found' }, { status: 404 })
+  if ((user2 as any).role === 'ADMIN') return NextResponse.json({ error: 'Cannot delete admin accounts' }, { status: 403 })
+  const ok = await deleteUserAndData(id)
+  return NextResponse.json({ success: !!ok, message: ok ? 'Student permanently deleted' : 'Failed to delete student' })
 }

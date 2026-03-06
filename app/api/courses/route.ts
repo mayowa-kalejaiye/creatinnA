@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sqlite } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { createCourse, getPublishedCoursesWithCounts } from '@/lib/db-adapter';
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,25 +22,18 @@ export async function POST(req: NextRequest) {
     // Store description as plain text (no JSON wrapping)
     const storedDescription = description ?? '';
 
-    const id = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
-    const now = new Date().toISOString();
+    const course = await createCourse({
+      title,
+      slug,
+      description: storedDescription,
+      thumbnail: thumbnail ?? null,
+      price: Number(price || 0),
+      duration: duration ?? '',
+      level: level ?? '',
+      category: category ?? '',
+      isPublished: isPublished,
+    })
 
-    sqlite.prepare(
-      `INSERT INTO "Course"(id, title, slug, description, thumbnail, price, duration, level, isPublished, category, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(id, title, slug, storedDescription, thumbnail ?? null, Number(price || 0), duration ?? '', level ?? '', (isPublished === false || isPublished === 0) ? 0 : 1, category ?? '', now, now);
-
-    // also insert into lowercase table for compatibility with other code that expects "courses"
-    try {
-      sqlite.prepare(
-        `INSERT OR IGNORE INTO "courses"(id, title, slug, description, thumbnail, price, duration, level, isPublished, category, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      ).run(id, title, slug, storedDescription, thumbnail ?? null, Number(price || 0), duration ?? '', level ?? '', (isPublished === false || isPublished === 0) ? 0 : 1, category ?? '', now, now);
-    } catch (e) {
-      // ignore if table doesn't exist
-    }
-
-    const course = sqlite.prepare('SELECT * FROM "Course" WHERE id = ?').get(id);
     return NextResponse.json(course, { status: 201 });
   } catch (err: any) {
     console.error('POST /api/courses error:', err?.message ?? err);
@@ -50,6 +43,6 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   // list published courses
-  const rows = sqlite.prepare('SELECT * FROM "Course" WHERE isPublished = 1 ORDER BY createdAt DESC').all();
-  return NextResponse.json(rows);
+  const rows = await getPublishedCoursesWithCounts()
+  return NextResponse.json(rows)
 }

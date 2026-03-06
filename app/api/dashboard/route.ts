@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { sqlite } from '@/lib/prisma';
+import { getEnrollmentsForUser } from '@/lib/db-adapter';
 
 export async function GET() {
   const session = await auth();
@@ -10,27 +10,17 @@ export async function GET() {
 
   const userId = (session.user as any).id;
 
-  const enrollmentsRaw = sqlite
-    .prepare(`
-      SELECT e.*, c.id as courseId, c.title as courseTitle, c.slug as courseSlug,
-             c.description as courseDescription, c.thumbnail as courseThumbnail
-      FROM "Enrollment" e
-      LEFT JOIN "Course" c ON c.id = e.courseId
-      WHERE e.userId = ?
-      ORDER BY e.enrolledAt DESC
-    `)
-    .all(userId);
-
+  const enrollmentsRaw = await getEnrollmentsForUser(userId as string)
   const enrollments = (Array.isArray(enrollmentsRaw) ? enrollmentsRaw : []).map((e: any) => ({
     ...e,
     course: {
       id: e.courseId,
-      title: e.courseTitle,
-      slug: e.courseSlug,
-      description: e.courseDescription,
-      thumbnail: e.courseThumbnail,
+      title: e.courseTitle || e.title,
+      slug: e.slug,
+      description: e.courseDescription || e.description,
+      thumbnail: e.courseThumbnail || e.thumbnail,
     },
-  }));
+  }))
 
   const certificates: any[] = [];
 

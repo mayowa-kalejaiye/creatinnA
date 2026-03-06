@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sqlite } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { updateLessonById, deleteLessonById } from '@/lib/db-adapter';
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ moduleId: string; lessonId: string }> }) {
   const { moduleId, lessonId } = await params;
@@ -17,13 +17,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ modu
       return NextResponse.json({ error: 'Title is required' }, { status: 400 });
     }
 
-    const now = new Date().toISOString();
-    sqlite.prepare(
-      'UPDATE "Lesson" SET title = ?, content = ?, videoUrl = ?, duration = ?, updatedAt = ? WHERE id = ? AND moduleId = ?'
-    ).run(title, content || null, videoUrl || null, duration || null, now, lessonId, moduleId);
-
-    const updated = sqlite.prepare('SELECT * FROM "Lesson" WHERE id = ?').get(lessonId);
-    return NextResponse.json(updated);
+    const updated = await updateLessonById(lessonId, moduleId, { title, content, videoUrl, duration })
+    return NextResponse.json(updated)
   } catch (err) {
     console.error('Update lesson error', err);
     return NextResponse.json({ error: 'Failed to update lesson' }, { status: 500 });
@@ -38,10 +33,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ m
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    sqlite.prepare('DELETE FROM "Lesson" WHERE id = ? AND moduleId = ?').run(lessonId, moduleId);
-    try { sqlite.prepare('DELETE FROM "lessons" WHERE id = ? AND moduleId = ?').run(lessonId, moduleId); } catch (e) {}
-
-    return NextResponse.json({ success: true });
+    const ok = await deleteLessonById(lessonId, moduleId)
+    return NextResponse.json({ success: !!ok })
   } catch (err) {
     console.error('Delete lesson error', err);
     return NextResponse.json({ error: 'Failed to delete lesson' }, { status: 500 });

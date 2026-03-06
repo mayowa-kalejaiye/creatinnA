@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sqlite } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { upsertProgress } from '@/lib/db-adapter';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,41 +11,7 @@ export async function POST(req: NextRequest) {
     const userId = session.user.id;
     const now = new Date().toISOString();
 
-    sqlite
-      .prepare(
-        `INSERT INTO "Progress"(id, userId, lessonId, completed, watchTime, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
-         ON CONFLICT(userId, lessonId) DO UPDATE SET completed = excluded.completed, watchTime = excluded.watchTime, updatedAt = excluded.updatedAt`
-      )
-      .run(
-        (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now()),
-        userId,
-        lessonId,
-        completed ? 1 : 0,
-        Number(watchTime || 0),
-        now,
-        now
-      );
-
-    // Also write into lowercase table for compatibility
-    try {
-      sqlite.prepare(
-        `INSERT OR REPLACE INTO "progress"(id, userId, lessonId, completed, watchTime, createdAt, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).run(
-        (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now()),
-        userId,
-        lessonId,
-        completed ? 1 : 0,
-        Number(watchTime || 0),
-        now,
-        now
-      );
-    } catch (e) {
-      // ignore if table missing
-    }
-
-    const row = sqlite.prepare('SELECT * FROM "Progress" WHERE userId = ? AND lessonId = ?').get(userId, lessonId);
+    const row = await upsertProgress({ userId, lessonId, completed: !!completed, watchTime: Number(watchTime || 0) })
     return NextResponse.json(row);
   } catch (err) {
     return NextResponse.json({ error: 'Failed to update progress' }, { status: 500 });

@@ -54,6 +54,10 @@
   }
   ,
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
     "migrate:sqlite-to-supabase": "node scripts/migrate_sqlite_to_supabase.js",
     "migrate:schema-to-supabase": "node scripts/apply_migrations_to_supabase.js"
   }

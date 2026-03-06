@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { sqlite } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { updateCourse, deleteCourse } from '@/lib/db-adapter';
 
 export async function PUT(
   req: NextRequest,
@@ -70,18 +70,9 @@ export async function PUT(
     // WHERE id param
     values.push(courseId);
 
-    const sql = `UPDATE "Course" SET ${assignments.join(', ')} WHERE id = ?`;
-    sqlite.prepare(sql).run(...values);
-
-    // Sync to lowercase courses table
-    try {
-      const sqlLower = `UPDATE courses SET ${assignments.join(', ')} WHERE id = ?`;
-      sqlite.prepare(sqlLower).run(...values);
-    } catch (e) { /* ignore if table doesn't exist */ }
-
-    const updated = sqlite
-      .prepare('SELECT * FROM "Course" WHERE id = ?')
-      .get(courseId);
+    const updated = await updateCourse(courseId, {
+      title, description, price, duration, level, category, thumbnail, isPublished, meta
+    })
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -102,9 +93,8 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    sqlite.prepare('DELETE FROM "Course" WHERE id = ?').run(courseId);
-
-    return NextResponse.json({ success: true });
+    const ok = await deleteCourse(courseId)
+    return NextResponse.json({ success: !!ok });
   } catch (error) {
     console.error('Delete course error:', error);
     return NextResponse.json({ error: 'Failed to delete course' }, { status: 500 });

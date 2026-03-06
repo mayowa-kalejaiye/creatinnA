@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sqlite } from '@/lib/prisma';
+import { getPaymentById, updatePaymentStatus, createEnrollment, getEnrollmentByUserCourse } from '@/lib/db-adapter';
 import Paystack from 'paystack-node';
 import crypto from 'crypto';
 
@@ -15,43 +15,7 @@ type PaymentData = {
 const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
 const paystack = paystackSecret ? new Paystack(paystackSecret) : null;
 
-function trySelectPayment(id: string) {
-  try { return sqlite.prepare('SELECT * FROM "payments" WHERE id = ?').get(id); } catch (e) {}
-  try { return sqlite.prepare('SELECT * FROM "Payment" WHERE id = ?').get(id); } catch (e) {}
-  return null;
-}
-
-function tryUpdatePaymentStatus(id: string, status: string, providerId?: string) {
-  try {
-    const stmt = sqlite.prepare('UPDATE "Payment" SET status = ?, providerId = ? WHERE id = ?');
-    stmt.run(status, providerId ?? null, id);
-    return true;
-  } catch (e) {
-    try {
-      const stmt2 = sqlite.prepare('UPDATE "payments" SET status = ?, providerId = ? WHERE id = ?');
-      stmt2.run(status, providerId ?? null, id);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-}
-
-function tryInsertEnrollment(enrollmentId: string, userId: string, courseId: string, status: string, now: string) {
-  try {
-    sqlite.prepare('INSERT INTO "Enrollment" (id, userId, courseId, status, progress, enrolledAt) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(enrollmentId, userId, courseId, status, 0, now);
-    return true;
-  } catch (e) {
-    try {
-      sqlite.prepare('INSERT INTO "enrollments" (id, userId, courseId, status, progress, enrolledAt) VALUES (?, ?, ?, ?, ?, ?)')
-        .run(enrollmentId, userId, courseId, status, 0, now);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-}
+// Using db-adapter helpers for payments and enrollments (pg preferred)
 
 export async function POST(req: Request) {
   try {
@@ -90,7 +54,7 @@ export async function POST(req: Request) {
       }
 
       // Require an existing payment row - do not auto-create payments from webhooks
-      const existing = trySelectPayment(reference) as Record<string, unknown> | null;
+      const existing = await getPaymentById(reference) as Record<string, unknown> | null;
       if (!existing) {
         console.warn('Payment row not found for reference; ignoring webhook', reference);
         return NextResponse.json({ ok: true });
@@ -99,7 +63,7 @@ export async function POST(req: Request) {
       // Idempotent update: only update if not already completed
       if (String((existing as any).status).toLowerCase() !== 'completed') {
         const providerId = data.id ?? data.transaction ?? undefined;
-        const updated = tryUpdatePaymentStatus(reference, 'completed', providerId);
+        const updated = await updatePaymentStatus(reference, 'completed', providerId);
         if (!updated) console.warn('Failed to update payment status for', reference);
       }
 
@@ -125,15 +89,12 @@ export async function POST(req: Request) {
       }
 
       // check if enrollment exists (case-insensitive table names)
-      let existingEnrollment = null;
-      try { existingEnrollment = sqlite.prepare('SELECT id FROM "Enrollment" WHERE userId = ? AND courseId = ?').get(userId, courseId); } catch (e) { try { existingEnrollment = sqlite.prepare('SELECT id FROM "enrollments" WHERE userId = ? AND courseId = ?').get(userId, courseId); } catch (e) {} }
-
+      const existingEnrollment = await getEnrollmentByUserCourse(userId, courseId)
       if (!existingEnrollment) {
-        const enrollmentId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
-        const now = new Date().toISOString();
-        const ok = tryInsertEnrollment(enrollmentId, userId, courseId, enrollmentStatus, now);
-        if (!ok) {
-          console.error('Failed to create enrollment for', userId, courseId);
+        try {
+          await createEnrollment({ userId, courseId })
+        } catch (e) {
+          console.error('Failed to create enrollment for', userId, courseId, e);
           if (isSelective) console.error(`ADMIN ACTION REQUIRED: Review enrollment for user ${userId}, course ${courseId} - payment completed but enrollment failed`);
         }
       }
@@ -145,22 +106,24 @@ export async function POST(req: Request) {
       if (!paymentId) return NextResponse.json({ error: 'missing paymentId' }, { status: 400 });
 
       // Require existing payment row
-      const paymentRow = trySelectPayment(paymentId) as { userId?: string; courseId?: string; program?: string } | null;
+      const paymentRow = await getPaymentById(paymentId) as { userId?: string; courseId?: string; program?: string } | null;
       if (!paymentRow) {
         console.warn('Manual webhook: payment row not found', paymentId);
         return NextResponse.json({ ok: true });
       }
 
       // Update payment status (idempotent)
-      tryUpdatePaymentStatus(paymentId, providerStatus);
+      await updatePaymentStatus(paymentId, providerStatus);
 
       // attempt enrollment when provider indicates success/completed
       if (['success', 'completed', 'paid', 'ok'].includes(providerStatus.toLowerCase())) {
         try {
           if (paymentRow && paymentRow.userId && paymentRow.courseId) {
-            const enrollmentId = (globalThis as any).crypto?.randomUUID?.() ?? String(Date.now());
-            const now = new Date().toISOString();
-            tryInsertEnrollment(enrollmentId, paymentRow.userId, paymentRow.courseId, 'active', now);
+            try {
+              await createEnrollment({ userId: paymentRow.userId as string, courseId: paymentRow.courseId as string })
+            } catch (e) {
+              console.error('Manual webhook enrollment error', e)
+            }
           } else {
             console.warn('Manual webhook: payment row missing userId/courseId', paymentId);
           }
