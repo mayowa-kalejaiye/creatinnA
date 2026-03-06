@@ -31,11 +31,11 @@ export async function GET() {
       }
       await pool.end()
       if (res && res.rows) dbReachable = true
-      return NextResponse.json({ usingPostgres: using, dbReachable, currentDatabase: currentDb, currentUser, error })
+      return NextResponse.json({ usingPostgres: using, dbReachable, currentDatabase: currentDb, currentUser, maskedUrl, error })
     } catch (err: any) {
       error = String(err?.message ?? err)
     }
   }
 
-  return NextResponse.json({ usingPostgres: using, dbReachable, error })
+  return NextResponse.json({ usingPostgres: using, dbReachable, maskedUrl, error })
 }
