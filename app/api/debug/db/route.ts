@@ -22,11 +22,15 @@ export async function GET() {
       const res = await pool.query('SELECT 1')
       let currentDb: string | undefined
       let currentUser: string | undefined
+      let serverIp: string | undefined
+      let serverPort: number | undefined
       try {
-        const info = await pool.query("SELECT current_database() AS db, current_user AS user")
+        const info = await pool.query("SELECT current_database() AS db, current_user AS user, inet_server_addr() AS ip, inet_server_port() AS port")
         if (info && info.rows && info.rows[0]) {
           currentDb = info.rows[0].db
           currentUser = info.rows[0].user
+          serverIp = info.rows[0].ip
+          serverPort = info.rows[0].port
         }
       } catch (e) {
         // ignore info query failures; we still consider the pool reachable if SELECT 1 succeeded

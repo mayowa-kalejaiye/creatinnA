@@ -1,4 +1,4 @@
-import { sqlite, pgPool } from "./prisma"
+import { sqlite, pgPool, getPgPool } from "./prisma"
 
 // NOTE: table names follow your existing SQL migrations (quoted where needed)
 
