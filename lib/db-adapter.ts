@@ -191,9 +191,10 @@ export async function getProgressForUserCourse(userId: string, courseId: string)
 
 export async function getTopPublishedCourses(limit = 3) {
   // Return top `limit` published courses. Prefer Postgres when available.
-  if (pgPool) {
+  const pool = getPgPool()
+  if (pool) {
     try {
-      const res = await pgPool.query(
+      const res = await pool.query(
         'SELECT id, title, slug, description, thumbnail, price, duration, level, category, "createdAt", "isPublished" FROM "Course" WHERE "isPublished" = 1 ORDER BY "createdAt" DESC LIMIT $1',
         [limit]
       )
@@ -219,16 +220,17 @@ export async function getTopPublishedCourses(limit = 3) {
 
 export async function getPublishedCoursesWithCounts() {
   // Returns published courses with module and enrollment counts
-  if (pgPool) {
+  const pool = getPgPool()
+  if (pool) {
     try {
-      const coursesRes = await pgPool.query('SELECT id, title, slug, description, thumbnail, price, duration, level, category FROM "Course" WHERE "isPublished" = 1 ORDER BY "createdAt" DESC')
+      const coursesRes = await pool.query('SELECT id, title, slug, description, thumbnail, price, duration, level, category FROM "Course" WHERE "isPublished" = 1 ORDER BY "createdAt" DESC')
       const courses = coursesRes.rows || []
       if (!courses.length) return []
 
       const ids = courses.map((c: any) => c.id)
       // module counts
-      const modulesRes = await pgPool.query('SELECT "courseId" as courseId, COUNT(*) as cnt FROM "Module" WHERE "courseId" = ANY($1) GROUP BY "courseId"', [ids])
-      const enrollRes = await pgPool.query('SELECT "courseId" as courseId, COUNT(*) as cnt FROM "Enrollment" WHERE "courseId" = ANY($1) GROUP BY "courseId"', [ids])
+      const modulesRes = await pool.query('SELECT "courseId" as courseId, COUNT(*) as cnt FROM "Module" WHERE "courseId" = ANY($1) GROUP BY "courseId"', [ids])
+      const enrollRes = await pool.query('SELECT "courseId" as courseId, COUNT(*) as cnt FROM "Enrollment" WHERE "courseId" = ANY($1) GROUP BY "courseId"', [ids])
       const modMap: Record<string, number> = {}
       for (const r of modulesRes.rows || []) modMap[r.courseid || r.courseId] = Number(r.cnt)
       const enMap: Record<string, number> = {}

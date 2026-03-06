@@ -50,6 +50,19 @@ export type DatabaseClient = any
 export let pgPool: any = null
 export const usingPostgres = Boolean(PROD_DB_URL)
 
+// helper that ensures the pool is initialized and returns it (or null)
+export function getPgPool() {
+  if (!pgPool && PROD_DB_URL) {
+    // force initialization by touching `db` proxy which will call ensurePg
+    // the proxy logic in the if (PROD_DB_URL) block sets pgPool when accessed.
+    // we can call any method, e.g. db.execute or simply ensurePg exists.
+    // easiest: require('pg') Pool directly now that we have PROD_DB_URL.
+    const { Pool } = require('pg');
+    pgPool = new Pool({ connectionString: PROD_DB_URL });
+  }
+  return pgPool
+}
+
 // Provide the same sqlite fallback used for local dev so callers that do
 // `sqlite.prepare(...).get()` don't crash during build/prerender when we
 // prefer Postgres for runtime. Postgres connections are initialized lazily.

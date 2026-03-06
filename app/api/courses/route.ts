@@ -44,16 +44,15 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   // list published courses
-  // debug: run raw query through pgPool to see what Postgres returns
-  if (pgPool) {
-    try {
-      const rawRes = await pgPool.query(
-        'SELECT id FROM "Course" WHERE "isPublished" = 1'
-      )
-      console.log('raw pg query returned', rawRes.rows.length, 'rows')
-    } catch (e) {
-      console.error('raw pg query failed', e)
-    }
+  // debug: run raw query using fresh Pool (avoids any pgPool initialization issues)
+  try {
+    const { Pool } = await import('pg')
+    const pool = new Pool({ connectionString: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL })
+    const rawRes = await pool.query('SELECT id FROM "Course" WHERE "isPublished" = 1')
+    console.log('fresh-pool raw query returned', rawRes.rows.length, 'rows')
+    await pool.end()
+  } catch (e) {
+    console.error('fresh-pool raw query failed', e)
   }
 
   const rows = await getPublishedCoursesWithCounts()
