@@ -16,7 +16,7 @@ function looksLikePostgres(conn?: string | null) {
 // **base64-encoded** URL via SUPABASE_DB_URL_B64. This lets the user copy the
 // raw encoded URI (as produced by Supabase) and encode it themselves. It will
 // survive any transformation by the environment.
-function getPostgresUrl() {
+function getPostgresUrl(): string | undefined {
   const direct = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL
   if (looksLikePostgres(direct)) return direct
   const b64 = process.env.SUPABASE_DB_URL_B64
@@ -37,7 +37,7 @@ const isProd = process.env.NODE_ENV === 'production'
 const explicitOptIn = process.env.USE_SUPABASE === '1'
 let PROD_DB_URL: string | null = null
 const candidate = getPostgresUrl()
-if (looksLikePostgres(candidate) && (isProd || explicitOptIn)) {
+if (candidate && looksLikePostgres(candidate) && (isProd || explicitOptIn)) {
   PROD_DB_URL = candidate
 } else {
   PROD_DB_URL = null
