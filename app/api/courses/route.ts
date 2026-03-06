@@ -58,5 +58,6 @@ export async function GET() {
   const rows = await getPublishedCoursesWithCounts()
   // log for diagnostics
   console.log('GET /api/courses ->', rows ? rows.length : rows, 'rows')
+  console.log('rows payload', JSON.stringify(rows))
   return NextResponse.json(rows)
 }
