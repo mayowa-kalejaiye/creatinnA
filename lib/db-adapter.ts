@@ -636,8 +636,23 @@ export async function getStudentsWithEnrollment() {
 export async function getEnrollmentsForUser(userId: string) {
   if (pgPool) {
     try {
-      const res = await pgPool.query(`SELECT e.*, c.title as courseTitle FROM "Enrollment" e LEFT JOIN "Course" c ON c.id = e."courseId" WHERE e."userId" = $1 ORDER BY e."enrolledAt" DESC`, [userId])
-      return res.rows || []
+      const res = await pgPool.query(
+        `SELECT e.*, c.title as courseTitle, c.slug as courseSlug, c.description as courseDescription, c.thumbnail as courseThumbnail
+         FROM "Enrollment" e
+         LEFT JOIN "Course" c ON c.id = e."courseId"
+         WHERE e."userId" = $1
+         ORDER BY e."enrolledAt" DESC`,
+        [userId]
+      )
+      const rows = res.rows || []
+      // normalize lowercase aliases if any
+      return rows.map((r: any) => ({
+        ...r,
+        courseTitle: r.courseTitle ?? r.coursetitle,
+        courseSlug: r.courseSlug ?? r.courseslug,
+        courseDescription: r.courseDescription ?? r.coursedescription,
+        courseThumbnail: r.courseThumbnail ?? r.coursethumbnail,
+      }))
     } catch (e) { console.warn('pg getEnrollmentsForUser failed, falling back to sqlite:', e) }
   }
   if (!sqlite) return []

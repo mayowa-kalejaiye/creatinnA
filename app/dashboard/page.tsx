@@ -19,7 +19,17 @@ export default async function DashboardPage() {
     const total = Array.isArray(lessons) ? lessons.length : 0
     const completed = Array.isArray(lessons) ? lessons.filter((l:any)=>Number(l.completed)===1).length : 0
     const progress = total > 0 ? Math.round((completed / total) * 100) : 0
-    enrollments.push({ ...e, course: { id: e.courseId, title: e.courseTitle || e.title, slug: e.slug, description: e.courseDescription || e.description, thumbnail: e.courseThumbnail || e.thumbnail }, progress })
+    enrollments.push({
+      ...e,
+      course: {
+        id: e.courseId,
+        title: e.courseTitle || e.title,
+        slug: e.courseSlug || e.slug || '',
+        description: e.courseDescription || e.description,
+        thumbnail: e.courseThumbnail || e.thumbnail,
+      },
+      progress,
+    })
   }
 
   // User progress
