@@ -513,7 +513,15 @@ export async function getAllApplications() {
   if (pgPool) {
     try {
       const res = await pgPool.query(`SELECT a.*, u.name as userName, u.email as userEmail, u.phone as userPhone FROM "applications" a LEFT JOIN "users" u ON u.id = a."userId" ORDER BY a."submittedAt" DESC`)
-      return (res.rows || []).map((a: any) => ({ ...a, user: { name: a.userName, email: a.userEmail, phone: a.userPhone } }))
+      const rows = res.rows || []
+      return rows.map((a: any) => ({
+        ...a,
+        user: {
+          name: a.userName ?? a.username,
+          email: a.userEmail ?? a.useremail,
+          phone: a.userPhone ?? a.userphone,
+        }
+      }))
     } catch (e) { console.warn('pg getAllApplications failed, falling back to sqlite:', e) }
   }
   if (!sqlite) return []

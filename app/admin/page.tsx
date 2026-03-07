@@ -80,7 +80,11 @@ export default async function AdminDashboardPage() {
   const recentEnrollmentsNormalized = recentEnrollmentsRaw.map((r: any) => {
     const total = (r._meta && r._meta.total_lessons) ? Number(r._meta.total_lessons) : 0
     const completed = (r._meta && r._meta.completed_lessons) ? Number(r._meta.completed_lessons) : 0
-    const progress = r.progress ?? (total > 0 ? Math.round((completed / total) * 100) : 0)
+    // convert stored progress to number; fall back to computed percentage when zero/missing
+    const rawProg = Number(r.progress ?? 0)
+    const progress = rawProg > 0
+      ? rawProg
+      : (total > 0 ? Math.round((completed / total) * 100) : 0)
     return {
       id: r.id,
       userId: r.userId,
