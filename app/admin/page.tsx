@@ -1,3 +1,8 @@
+// this page relies on real-time database queries and session info
+// force-dynamic ensures Next.js will render on each request rather than
+// statically generating at build time (previously caused empty students list)
+export const dynamic = 'force-dynamic';
+
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import AdminDashboardClient from "./AdminDashboardClient";

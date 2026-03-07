@@ -581,9 +581,11 @@ export async function updateUserPasswordAndRole(userId: string, passwordHash: st
 }
 
 export async function getStudentsWithEnrollment() {
+  console.log('db-adapter:getStudentsWithEnrollment called, pgPool?', !!pgPool);
   if (pgPool) {
     try {
       const res = await pgPool.query(`SELECT u.id, u.name, u.email, u.phone, u.role, u."createdAt", e."courseId", e."enrolledAt" as enrollmentDate, e.status as enrollmentStatus, c.title as courseTitle FROM "users" u LEFT JOIN "Enrollment" e ON e."userId" = u.id LEFT JOIN "Course" c ON c.id = e."courseId" WHERE u.role != 'ADMIN' AND u.password != '__applicant__' ORDER BY u."createdAt" DESC`)
+      console.log('db-adapter:getStudentsWithEnrollment pg returned', (res.rows && res.rows.length));
       return res.rows || []
     } catch (e) { console.warn('pg getStudentsWithEnrollment failed, falling back to sqlite:', e) }
   }
