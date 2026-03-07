@@ -60,12 +60,15 @@ export default async function StudentProgressPage(props: any) {
                 </div>
                 <div className="border-t border-white/[0.04] pt-3">
                   <ul className="space-y-2">
-                    {c.lessons.map((l: any) => (
-                      <li key={l.id} className="flex items-center justify-between">
-                        <span className={`truncate ${l.completed ? 'text-emerald-300' : 'text-white/60'}`}>{l.title}</span>
-                        <span className="text-xs text-white/30">{l.completed ? 'Completed' : 'Incomplete'}</span>
-                      </li>
-                    ))}
+                        {c.lessons.map((l: any) => {
+                          const done = Number(l.completed) === 1;
+                          return (
+                            <li key={l.id} className="flex items-center justify-between">
+                              <span className={`truncate ${done ? 'text-emerald-300' : 'text-white/60'}`}>{l.title}</span>
+                              <span className="text-xs text-white/30">{done ? 'Completed' : 'Incomplete'}</span>
+                            </li>
+                          );
+                        })}
                   </ul>
                 </div>
               </div>

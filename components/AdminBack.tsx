@@ -1,11 +1,20 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function AdminBack({ fallback = "/admin" }: { fallback?: string }) {
   const router = useRouter();
+  const pathname = usePathname();
 
   function goBack() {
+    // when we're already in the admin section, the safe thing is to return
+    // explicitly to the admin dashboard rather than relying on the browser
+    // history (which might contain non-admin pages like the student view).
+    if (pathname && pathname.startsWith('/admin')) {
+      router.push(fallback);
+      return;
+    }
+
     try {
       if (typeof window !== "undefined" && window.history.length > 1) {
         router.back();
