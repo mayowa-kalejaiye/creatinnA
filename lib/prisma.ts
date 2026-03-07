@@ -37,10 +37,17 @@ const isProd = process.env.NODE_ENV === 'production'
 const explicitOptIn = process.env.USE_SUPABASE === '1'
 let PROD_DB_URL: string | null = null
 const candidate = getPostgresUrl()
+// debug logging to understand why Postgres may not be enabled at runtime
+console.log('prisma: NODE_ENV', process.env.NODE_ENV, 'isProd?', isProd, 'explicitOptIn?', explicitOptIn)
+console.log('prisma: raw SUPABASE_DB_URL', process.env.SUPABASE_DB_URL)
+console.log('prisma: raw SUPABASE_DB_URL_B64', process.env.SUPABASE_DB_URL_B64)
+console.log('prisma: getPostgresUrl candidate', candidate)
 if (candidate && looksLikePostgres(candidate) && (isProd || explicitOptIn)) {
   PROD_DB_URL = candidate
+  console.log('prisma: enabling Postgres, PROD_DB_URL set')
 } else {
   PROD_DB_URL = null
+  console.log('prisma: NOT using Postgres (PROD_DB_URL=null)')
 }
 
 // Common exports (filled below depending on environment)
@@ -52,11 +59,9 @@ export const usingPostgres = Boolean(PROD_DB_URL)
 
 // helper that ensures the pool is initialized and returns it (or null)
 export function getPgPool() {
+  console.log('prisma:getPgPool called, pgPool exists?', !!pgPool, 'PROD_DB_URL', PROD_DB_URL ? '[present]' : null)
   if (!pgPool && PROD_DB_URL) {
-    // force initialization by touching `db` proxy which will call ensurePg
-    // the proxy logic in the if (PROD_DB_URL) block sets pgPool when accessed.
-    // we can call any method, e.g. db.execute or simply ensurePg exists.
-    // easiest: require('pg') Pool directly now that we have PROD_DB_URL.
+    console.log('prisma:getPgPool initializing new Pool');
     const { Pool } = require('pg');
     pgPool = new Pool({ connectionString: PROD_DB_URL });
   }
