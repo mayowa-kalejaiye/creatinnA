@@ -463,7 +463,13 @@ export async function getAllCoursesWithCounts() {
          ORDER BY c."createdAt" DESC`
       )
       const rows = res.rows || []
-      return rows.map((r: any) => ({ ...r, _count: { enrollments: Number(r.enrollmentsCount ?? 0), modules: Number(r.modulesCount ?? 0) } }))
+      // Postgres lowercases alias names, so the returned object may have
+      // `enrollmentscount`/`modulescount` instead of the camelCase versions.
+      return rows.map((r: any) => {
+        const enroll = Number(r.enrollmentsCount ?? r.enrollmentscount ?? 0)
+        const mods = Number(r.modulesCount ?? r.modulescount ?? 0)
+        return { ...r, _count: { enrollments: enroll, modules: mods } }
+      })
     } catch (e) {
       console.warn('pg getAllCoursesWithCounts failed, falling back to sqlite:', e)
     }
@@ -485,7 +491,15 @@ export async function getPendingApplications() {
   if (pgPool) {
     try {
       const res = await pgPool.query(`SELECT a.*, u.name as userName, u.email as userEmail, u.phone as userPhone FROM "applications" a LEFT JOIN "users" u ON u.id = a."userId" WHERE a.status = 'pending' ORDER BY a."submittedAt" DESC`)
-      return (res.rows || []).map((a: any) => ({ ...a, user: { name: a.userName, email: a.userEmail, phone: a.userPhone } }))
+      const rows = res.rows || []
+      return rows.map((a: any) => ({
+        ...a,
+        user: {
+          name: a.userName ?? a.username,
+          email: a.userEmail ?? a.useremail,
+          phone: a.userPhone ?? a.userphone,
+        }
+      }))
     } catch (e) { console.warn('pg getPendingApplications failed, falling back to sqlite:', e) }
   }
   if (!sqlite) return []
@@ -594,7 +608,14 @@ export async function getStudentsWithEnrollment() {
     try {
       const res = await pool.query(`SELECT u.id, u.name, u.email, u.phone, u.role, u."createdAt", e."courseId", e."enrolledAt" as enrollmentDate, e.status as enrollmentStatus, c.title as courseTitle FROM "users" u LEFT JOIN "Enrollment" e ON e."userId" = u.id LEFT JOIN "Course" c ON c.id = e."courseId" WHERE u.role != 'ADMIN' AND u.password != '__applicant__' ORDER BY u."createdAt" DESC`)
       console.log('db-adapter:getStudentsWithEnrollment pg returned', (res.rows && res.rows.length));
-      return res.rows || []
+      const rows = res.rows || []
+      // normalize keys that may be lowercased by pg
+      return rows.map((r: any) => ({
+        ...r,
+        enrollmentDate: r.enrollmentDate ?? r.enrollmentdate,
+        enrollmentStatus: r.enrollmentStatus ?? r.enrollmentstatus,
+        courseTitle: r.courseTitle ?? r.coursetitle,
+      }))
     } catch (e) { console.warn('pg getStudentsWithEnrollment failed, falling back to sqlite:', e) }
   }
   if (!sqlite) return []
